@@ -466,7 +466,7 @@ sub fetchData {
 
    $objPath  = $_[0]->{'api_path'} . ($_[0]->{'fetch_rules'}->{$_[2]}->{'excl_sitename'} ? '' : "/s/$_[1]") . "/$_[0]->{'fetch_rules'}->{$_[2]}->{'path'}";
    # if MAC is given with command-line option -  RapidWay for Controller v4 is allowed
-   $objPath.="/$_[0]->{'mac'}" if (($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_4) && ($givenObjType eq OBJ_UAP) && $_[0]->{'mac'});
+   $objPath.="/$_[0]->{'mac'}" if (($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_4) && $_[0]->{'mac'});
    print "\n[.]\t\t Object path: '$objPath'" if ($_[0]->{'debuglevel'} >= DEBUG_MID);
 
    ################################################## Take JSON  ##################################################
@@ -660,10 +660,10 @@ sub makeLLD {
        # USW Ports LLD workaround: Store USW with given ID to $objList and then rewrite $objList with subtable {'port_table'}. 
        # Then make LLD for USW_PORT object
        if ($givenObjType eq OBJ_USW_PORT) {
-          fetchData($_[0], OBJ_USW, $objList);
+          fetchData($_[0], $_[0]->{'sitename'}, OBJ_USW, $objList);
           $objList=@{$objList}[0]->{'port_table'};
        } else {
-          fetchData($_[0], $givenObjType, $objList);
+          fetchData($_[0], $_[0]->{'sitename'}, $givenObjType, $objList);
        }
 
        print "\n[.]\t\t Objects list:\n\t", Dumper $objList if ($_[0]->{'debuglevel'} >= DEBUG_MID);
