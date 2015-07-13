@@ -1,0 +1,46 @@
+#! /bin/sh
+### BEGIN INIT INFO
+# Provides:          unifi_proxy
+# Required-Start:    $remote_fs $network 
+# Required-Stop:     $remote_fs
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start UniFi Proxy TCP server
+### END INIT INFO
+
+set -e
+
+NAME=unifi_proxy.pl
+DAEMON=/usr/local/sbin/$NAME
+DAEMON_OPTS="-D -C /etc/unifi_proxy/unifi_proxy.conf"
+DESC="UniFi Proxy TCP server"
+
+test -x $DAEMON || exit 0
+
+export PATH="${PATH:+$PATH:}/usr/sbin:/sbin"
+
+case "$1" in
+  start)
+       echo "$DESC: start daemon"
+       $DAEMON $DAEMON_OPTS
+	;;
+  stop)
+       echo "$DESC: stop daemon"
+       killall -TERM $NAME
+	;;
+  reload)
+       echo "$DESC: reload config file"
+       killall -HUP $NAME
+	;;
+  restart|force-reload)
+       echo "$DESC: restart daemon..."
+	$0 stop
+	$0 start
+	;;
+  *)
+    echo "Usage: /etc/init.d/$NAME {start|stop|restart|force-reload}" >&2
+	exit 1
+	;;
+esac
+
+exit 0
