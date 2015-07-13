@@ -1,5 +1,6 @@
 ## UniFi Proxy
-Actual release is NONE: no releases, testing stage in progress.  
+Actual release is NONE: no releases, testing stage in progress. Brave explorers can try  [unifi_proxy.pl](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/master/usr/local/sbin/unifi_proxy.pl) with [unifi_proxy.conf](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/master/etc/unifi_proxy/unifi_proxy.conf)
+
 Command-line version of UniFi Proxy is [UniFi Miner](https://github.com/zbx-sadman/unifi_miner)
 
 It is a TCP server written in Perl, which helps deliver to the monitoring system (Zabbix) operational data - metrics and settings obtained from the UniFi controller via API, provided by Ubiquiti. Zabbix's Low-level Discovery (LLD) protocol are supported.
