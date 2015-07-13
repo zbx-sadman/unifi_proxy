@@ -14,5 +14,5 @@ If u have an problem, you can search the existing closed or open [issues](https:
 Templates for Zabbix [here](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/master/Zabbix_Templates)
 
 ### My other projects
- [UniFi Miner](https://github.com/zbx-sadman/unifi_miner)  
+ [_UniFi Miner_](https://github.com/zbx-sadman/unifi_miner) - Command-line version of UniFi Proxy   
  [_Zabbuino_](https://github.com/zbx-sadman/zabbuino) - Zabbix agent for Arduino 
