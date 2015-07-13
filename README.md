@@ -11,7 +11,7 @@ If you have a question about Proxy, please, refer to [UniFi Proxy Russian Guide]
 
 If u have an problem, you can search the existing closed or open [issues](https://github.com/zbx-sadman/unifi_proxy/issues). 
 
-Templates for Zabbix [here](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/master/Zabbix_Templates)
+Templates for Zabbix [here](https://github.com/zbx-sadman/unifi_proxy/tree/master/Zabbix_Templates)
 
 Response time compare table (6 UAPs installation):
 
