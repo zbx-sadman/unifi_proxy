@@ -9,6 +9,7 @@ use POSIX;
 use POSIX ":sys_wait_h";
 use IO::Socket;
 use IO::Handle;
+use Symbol;
 use IO::Socket::SSL ();
 
 use constant {
@@ -43,6 +44,8 @@ use constant {
      SERVER_DEFAULT_IP => '127.0.0.1',
      SERVER_DEFAULT_PORT => 7777,
      SERVER_DEFAULT_CONNLIMIT => 10,
+     SERVER_DEFAULT_STARTSERVERS => 8,
+     SERVER_ACCEPTS_BEFORE_DIE => 32,
      TRUE => 1,
      FALSE => 0,
 
@@ -101,42 +104,43 @@ if (defined ($options->{'D'})) {
    POSIX::setsid() || die "[!] Can't start a new session ($!)";
 }
 
-my $globalConfig;
-my $stopNow = 0;
+my $globalConfig   = {}; 
+# PreForked servers PID store
+my $servers        = {};
+# PreForked servers number
+my $servers_num    = 0;
 
-# read config on start 
+# Read config
 readConf;
 
-$SIG{INT}= $SIG{TERM} = \&handleTERMSignal;
-$SIG{HUP} = \&readConf;
+# Bind to addr:port
 my $server = IO::Socket::INET->new(LocalAddr => $globalConfig->{'listenip'}, 
                                    LocalPort => $globalConfig->{'listenport'}, 
-                                   Listen => $globalConfig->{'connlimit'},
+                                   Listen    => $globalConfig->{'connlimit'},
+                                   Type      => SOCK_STREAM,
+                                   Proto     => 'tcp',
                                    ReuseAddr => 1); 
 
-# loop while not recieved $SIG{INT} or $SIG{TERM} and handleTERMSignal not called
-until($stopNow){
-    my $client;
-    while($client = $server->accept()) {
-      $SIG{CHLD} = \&handleCHLDSignal;
-      # if Child PID == undef - fork error caused
-      defined (my $childPid = fork()) || die "[!] Can't fork new child ($!), stop";
-      # if Child PID <> 0 - it's a Parent instance, and it must go on loop begin & wait for new connection
-      next if $childPid;
-      # Otherwise, if Child PID == 0 - it's a Child instance, and it must do all hard work
-      # Close server's handle inside Child, because it shared with parent.
-      close($server) if ($childPid == 0);
-      # Do handle connection
-      $client->autoflush(1);
-      handleConnection($globalConfig, $client);
-      # exit from child (terminate it)
-      exit;
-   }
-   # Do someting if called 'next' on near loop
-   continue {
-      # close client's handle, because its copy handled by forked child.
-      close($client);
-   }
+
+
+# Start new servers 
+for (1 .. $globalConfig->{'startservers'}) {
+    makeServer();
+}
+
+# Assign subs to handle Signals
+$SIG{INT}= \&handleINTSignal;
+$SIG{HUP} = \&handleHUPSignal;
+$SIG{CHLD} = \&handleCHLDSignal;
+#$SIG{TERM}
+# And maintain the population.
+while (1) {
+    # wait for a signal (i.e., child's death)
+    sleep;                          
+    for (my $i = $servers_num; $i < $globalConfig->{'startservers'}; $i++) {
+        # add several server instances if need
+        makeServer();             
+    }
 }
 
 
@@ -153,8 +157,19 @@ until($stopNow){
 #
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 sub handleCHLDSignal {
-    while (( my $waitedpid = waitpid(-1,WNOHANG)) > 0) { }
     $SIG{CHLD} = \&handleCHLDSignal;
+    my $pid = wait;
+#    print "\n [CHLD] reaper for $pid";
+    $servers_num --;
+    delete $servers->{$pid};
+}
+
+sub handleHUPSignal {
+#    print "\n [HUP] kill servers", print Dumper keys $servers;
+#    local($SIG{CHLD}) = 'IGNORE';   # we're going to kill our children
+#    kill 'INT' => keys $servers;
+#    print "\n ReadConf";
+    readConf;
 }
 
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
@@ -164,9 +179,61 @@ sub handleCHLDSignal {
 #    - Close listen port
 #
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
-sub handleTERMSignal {
-    $stopNow = TRUE;
-    close($server);
+sub handleINTSignal {
+    local($SIG{CHLD}) = 'IGNORE';   # we're going to kill our children
+#    print "\n [INT] kill servers", print Dumper $servers;
+    kill 'INT' => keys $servers;
+    exit;                           # clean up with dignity
+}
+
+#*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
+#
+#  Make new server with PreFork engine
+#    - Fork new server process
+#    - Accept and handle connection from IO::SOCket queue
+#
+#*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
+sub makeServer {
+    my $pid;
+    my $sigset;
+    
+    # block signal for fork
+    $sigset = POSIX::SigSet->new(SIGINT);
+    sigprocmask(SIG_BLOCK, $sigset) or die "[!] Can't block SIGINT for fork: $!\n";
+
+    # if $pid is undefined - fork creating error caused
+    die "[!] fork: $!" unless defined ($pid = fork);
+    
+    if ($pid) {
+        # Parent records the child's birth and returns.
+        sigprocmask(SIG_UNBLOCK, $sigset) or die "[!] Can't unblock SIGINT for fork: $!\n";
+        $servers->{$pid} = 1;
+        $servers_num++;
+        return;
+    } else {
+        #############################################    
+        # Child can *not* return from this subroutine.
+        #############################################    
+        # make SIGINT kill us as it did before
+        $SIG{INT} = 'DEFAULT';     
+    
+        # unblock signals
+        sigprocmask(SIG_UNBLOCK, $sigset) or die "[!] Can't unblock SIGINT for fork: $!\n";
+        # handle connections until we've reached SERVER_ACCEPTS_BEFORE_DIE
+        for (my $i=0; $i < SERVER_ACCEPTS_BEFORE_DIE; $i++) {
+            my $client = $server->accept() or last;
+            $client->autoflush(1);
+#        print "\n <<<<<<<<<<< pid: $globalConfig->{'pid'} ($pid), id: $globalConfig->{'id'} >>>>>>>>>>>>>>>>\n";
+            handleConnection($globalConfig, $client);
+#        print "\n >>>>>>>>>>> pid: $globalConfig->{'pid'} ($pid), id: $globalConfig->{'id'} <<<<<<<<<<<<<<<<\n";
+        }
+        # tidy up gracefully and finish
+    
+        # this exit is VERY important, otherwise the child will become
+        # a producer of more and more children, forking yourself into
+        # process death.
+        exit;
+    }
 }
 
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
@@ -176,27 +243,31 @@ sub handleTERMSignal {
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 sub handleConnection {
     # make copy of global config to stop change $_[0] by fork's copy-write procedure
-    my $gC = $_[0];
+    my $gC = {};
+#    my $gC = $_[0];
     my $socket = $_[1];
     my $res;
     my @objJSON=();
+
+    # why `my` do not copy $_[0] to $gC?
+    while(my ($k,$v) = each $_[0]) { $gC->{$k}= $v; };
 
     # read line from socket
     chomp (my $line=<$socket>);
     return "[!] Empty request, nothing to do" if ($line eq '');
 
-    print "\n[.]\t\tIncoming line: '$line'" if ($globalConfig->{'debuglevel'} >= DEBUG_LOW);
+    print "\n[.]\t\tIncoming line: '$line'" if ($_[0]->{'debuglevel'} >= DEBUG_LOW);
     # split line to action, object type, sitename, key, id, user name, user password, controller version, cache_timeout
     my ($opt_a, $opt_o, $opt_s, $opt_k, $opt_i, $opt_u, $opt_p, $opt_v, $opt_c)=split(",",$line);
 
     # Rewrite default values (taken from globalConfig) by command line arguments
-    $gC->{'action'}        = $opt_a if ($opt_a);
-    $gC->{'key'}           = $opt_k if ($opt_k);
-    $gC->{'objecttype'}    = $opt_o if ($opt_o);
-    $gC->{'unifiuser'}     = $opt_u if ($opt_u);
-    $gC->{'unifipass'}     = $opt_p if ($opt_p);
-    $gC->{'unifiversion'}      = $opt_v if ($opt_v);
+    $gC->{'action'}       = $opt_a if ($opt_a);
+    $gC->{'objecttype'}   = $opt_o if ($opt_o);
+    $gC->{'unifiuser'}    = $opt_u if ($opt_u);
+    $gC->{'unifipass'}    = $opt_p if ($opt_p);
+    $gC->{'unifiversion'} = $opt_v if ($opt_v);
     $gC->{'cachemaxage'}  = $opt_c if ($opt_c);
+    $gC->{'key'}          = $opt_k;
 
     # opt_s not '' (virtual -s option used) -> use given sitename. Otherwise use 'default'
     $gC->{'sitename'}      = ($opt_s) ? ($opt_s) : $gC->{'default_sitename'};
@@ -282,7 +353,7 @@ sub handleConnection {
           # if $globalConfig->{'id'} is exist then metric of this object has returned. 
           # If not - calculate $globalConfig->{'action'} for all items in objects list (all object of type = 'object name', for example - all 'uap'
           # load JSON data & get metric
-          print "\n[*] Key given: $globalConfig->{'key'}" if ($gC->{'debuglevel'} >= DEBUG_LOW);
+          print "\n[*] Key given: $gC->{'key'}" if ($gC->{'debuglevel'} >= DEBUG_LOW);
           fetchData($gC, $gC->{'sitename'}, $gC->{'objecttype'}, \@objJSON);
           # Logout need if logging in before (in fetchData() sub) completed
           print "\n[*] Logout from UniFi controller" if ($gC->{'debuglevel'} >= DEBUG_LOW);
@@ -302,6 +373,7 @@ sub handleConnection {
     # Push result of work to stdout
     print $socket (defined($res) ? "$res" : '\n');
     undef @objJSON; undef $gC;
+    return TRUE;
 }
 
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
@@ -444,6 +516,7 @@ sub getMetric {
 
   #float up...
   $_[0]->{'dive_level'}--;
+  return TRUE;
 }
 
 
@@ -466,7 +539,7 @@ sub fetchData {
 
    $objPath  = $_[0]->{'api_path'} . ($_[0]->{'fetch_rules'}->{$_[2]}->{'excl_sitename'} ? '' : "/s/$_[1]") . "/$_[0]->{'fetch_rules'}->{$_[2]}->{'path'}";
    # if MAC is given with command-line option -  RapidWay for Controller v4 is allowed
-   $objPath.="/$_[0]->{'mac'}" if (($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_4) && $_[0]->{'mac'});
+   $objPath.="/$_[0]->{'mac'}" if (($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_4) && ($givenObjType eq OBJ_UAP) && $_[0]->{'mac'});
    print "\n[.]\t\t Object path: '$objPath'" if ($_[0]->{'debuglevel'} >= DEBUG_MID);
 
    ################################################## Take JSON  ##################################################
@@ -564,6 +637,7 @@ sub fetchData {
 
    print "\n[<]\t Fetched data:\n\t", Dumper $_[3] if ($_[0]->{'debuglevel'} >= DEBUG_HIGH);
    print "\n[-] fetchData() finished" if ($_[0]->{'debuglevel'} >= DEBUG_LOW);
+   return TRUE;
 }
 
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
@@ -634,6 +708,7 @@ sub fetchDataFromController {
 
    print "\n[-] fetchDataFromController() finished" if ($_[0]->{'debuglevel'} >= DEBUG_LOW);
    $_[0]->{'downloaded'}=TRUE;
+   return TRUE;
 }
 
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
@@ -660,10 +735,10 @@ sub makeLLD {
        # USW Ports LLD workaround: Store USW with given ID to $objList and then rewrite $objList with subtable {'port_table'}. 
        # Then make LLD for USW_PORT object
        if ($givenObjType eq OBJ_USW_PORT) {
-          fetchData($_[0], $_[0]->{'sitename'}, OBJ_USW, $objList);
+          fetchData($_[0], OBJ_USW, $objList);
           $objList=@{$objList}[0]->{'port_table'};
        } else {
-          fetchData($_[0], $_[0]->{'sitename'}, $givenObjType, $objList);
+          fetchData($_[0], $givenObjType, $objList);
        }
 
        print "\n[.]\t\t Objects list:\n\t", Dumper $objList if ($_[0]->{'debuglevel'} >= DEBUG_MID);
@@ -701,6 +776,7 @@ sub makeLLD {
     $_[1]=JSON::XS::encode_json($_[1]);
     print "\n[<]\t Generated LLD:\n\t", Dumper $_[1] if ($_[0]->{'debuglevel'} >= DEBUG_HIGH);
     print "\n[-] makeLLD() finished" if ($_[0]->{'debuglevel'} >= DEBUG_LOW);
+    return TRUE;
 }
 
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
@@ -759,6 +835,7 @@ sub addToLLD {
 
     print "\n[<]\t Generated LLD piece:\n\t", Dumper $_[3] if ($_[0]->{'debuglevel'} >= DEBUG_HIGH);
     print "\n[-] addToLLD() finished" if ($_[0]->{'debuglevel'} >= DEBUG_LOW);
+    return TRUE;
 }
 
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
@@ -786,6 +863,7 @@ sub readConf {
    $globalConfig->{'listenip'}      = SERVER_DEFAULT_IP unless (defined($globalConfig->{'listenip'}));
    $globalConfig->{'listenport'}    = SERVER_DEFAULT_PORT unless (defined($globalConfig->{'listenport'}));
    $globalConfig->{'connlimit'}     = SERVER_DEFAULT_CONNLIMIT unless (defined($globalConfig->{'connlimit'}));
+   $globalConfig->{'startservers'}  = SERVER_DEFAULT_STARTSERVERS unless (defined($globalConfig->{'startservers'}));
 
    $globalConfig->{'action'}  	    = ACT_DISCOVERY unless (defined($globalConfig->{'action'}));
    $globalConfig->{'objecttype'}    = OBJ_WLAN unless (defined($globalConfig->{'objecttype'}));
@@ -823,4 +901,5 @@ sub readConf {
    # -s option used sign
    $globalConfig->{'sitename_given'} = FALSE;
 
+   return TRUE;
 }
