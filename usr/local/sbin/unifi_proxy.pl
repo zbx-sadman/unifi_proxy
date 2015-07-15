@@ -1,5 +1,10 @@
 #!/usr/bin/perl
 
+### echo 1 > /proc/sys/net/ipv4/tcp_tw_recycle 
+#    Enable fast recycling TIME-WAIT sockets. Default value is 0.
+#    It should not be changed without advice/request of technical
+#    experts.
+
 use strict;
 use warnings;
 use Data::Dumper;
@@ -11,6 +16,7 @@ use IO::Socket;
 use IO::Handle;
 use Symbol;
 use IO::Socket::SSL ();
+use PerlIO;
 
 use constant {
      ACT_COUNT => 'count',
@@ -43,9 +49,9 @@ use constant {
      TOOL_HOMEPAGE => 'https://github.com/zbx-sadman/unifi_proxy',
      SERVER_DEFAULT_IP => '127.0.0.1',
      SERVER_DEFAULT_PORT => 7777,
-     SERVER_DEFAULT_CONNLIMIT => 10,
-     SERVER_DEFAULT_STARTSERVERS => 8,
-     SERVER_ACCEPTS_BEFORE_DIE => 32,
+     SERVER_DEFAULT_MAXCLIENTS => 10,
+     SERVER_DEFAULT_STARTSERVERS => 3,
+     SERVER_DEFAULT_MAXREQUESTSPERCHILD => 1024,
      TRUE => 1,
      FALSE => 0,
 
@@ -116,10 +122,10 @@ readConf;
 # Bind to addr:port
 my $server = IO::Socket::INET->new(LocalAddr => $globalConfig->{'listenip'}, 
                                    LocalPort => $globalConfig->{'listenport'}, 
-                                   Listen    => $globalConfig->{'connlimit'},
+                                   Listen    => $globalConfig->{'maxclients'},
+                                   Reuse     => 1,
                                    Type      => SOCK_STREAM,
-                                   Proto     => 'tcp',
-                                   ReuseAddr => 1); 
+                                   Proto     => 'tcp',) || die $@; 
 
 
 
@@ -134,6 +140,7 @@ $SIG{HUP} = \&handleHUPSignal;
 $SIG{CHLD} = \&handleCHLDSignal;
 #$SIG{TERM}
 # And maintain the population.
+
 while (1) {
     # wait for a signal (i.e., child's death)
     sleep;                          
@@ -149,6 +156,11 @@ while (1) {
 #                                                      Subroutines
 #
 ############################################################################################################################
+sub logMessage
+  {
+    return unless ($globalConfig->{'debuglevel'} >= $_[1]);
+    print "[$$] ", time, " $_[0]\n";
+  }
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 #
 #  Handle CHLD signal
@@ -196,7 +208,11 @@ sub handleINTSignal {
 sub makeServer {
     my $pid;
     my $sigset;
-    
+    # make copy of global config to stop change $_[0] by fork's copy-write procedure
+#    my $gC;
+   
+    # why `my` do not copy $globalConfig to $gC?
+#    while(my ($k,$v) = each $globalConfig) { $gC->{$k}= $v; };
     # block signal for fork
     $sigset = POSIX::SigSet->new(SIGINT);
     sigprocmask(SIG_BLOCK, $sigset) or die "[!] Can't block SIGINT for fork: $!\n";
@@ -209,6 +225,7 @@ sub makeServer {
         sigprocmask(SIG_UNBLOCK, $sigset) or die "[!] Can't unblock SIGINT for fork: $!\n";
         $servers->{$pid} = 1;
         $servers_num++;
+        $globalConfig->{'pid'}=$pid;
         return;
     } else {
         #############################################    
@@ -216,16 +233,35 @@ sub makeServer {
         #############################################    
         # make SIGINT kill us as it did before
         $SIG{INT} = 'DEFAULT';     
-    
+
         # unblock signals
         sigprocmask(SIG_UNBLOCK, $sigset) or die "[!] Can't unblock SIGINT for fork: $!\n";
-        # handle connections until we've reached SERVER_ACCEPTS_BEFORE_DIE
-        for (my $i=0; $i < SERVER_ACCEPTS_BEFORE_DIE; $i++) {
+
+        my $serverConfig;
+        # copy hash with globalConfig to serverConfig to prevent 'copy-on-write'.
+        %{$serverConfig}=%{$globalConfig;};
+
+        # init service keys
+        # Level of dive (recursive call) for getMetric subroutine
+        $serverConfig->{'dive_level'} = 1;
+        # Max level to which getMetric is dived
+        $serverConfig->{'max_depth'} = 0;
+        # Data is downloaded instead readed from file
+        $serverConfig->{'downloaded'} = FALSE;
+        # LWP::UserAgent object, which must be saved between fetchData() calls
+        $serverConfig->{'ua'} = undef;
+        # JSON::XS object
+        $serverConfig->{'jsonxs'} = JSON::XS->new->utf8;
+        # Already logged sign
+        $serverConfig->{'logged_in'} = FALSE;
+        # -s option used sign
+        $globalConfig->{'sitename_given'} = FALSE;
+
+        # handle connections until we've reached MaxRequestsPerChild
+        for (my $i=0; $i < $serverConfig->{'maxrequestsperchild'}; $i++) {
             my $client = $server->accept() or last;
             $client->autoflush(1);
-#        print "\n <<<<<<<<<<< pid: $globalConfig->{'pid'} ($pid), id: $globalConfig->{'id'} >>>>>>>>>>>>>>>>\n";
-            handleConnection($globalConfig, $client);
-#        print "\n >>>>>>>>>>> pid: $globalConfig->{'pid'} ($pid), id: $globalConfig->{'id'} <<<<<<<<<<<<<<<<\n";
+            handleConnection($serverConfig, $client);
         }
         # tidy up gracefully and finish
     
@@ -242,140 +278,81 @@ sub makeServer {
 #
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 sub handleConnection {
-    # make copy of global config to stop change $_[0] by fork's copy-write procedure
-    my $gC = {};
-#    my $gC = $_[0];
     my $socket = $_[1];
     my $res;
     my @objJSON=();
+    my $gC;
 
-    # why `my` do not copy $_[0] to $gC?
-    while(my ($k,$v) = each $_[0]) { $gC->{$k}= $v; };
+    # copy serverConfig to localConfig for saving default values 
+    %{$gC}=%{$_[0]};
 
     # read line from socket
-    chomp (my $line=<$socket>);
-    return "[!] Empty request, nothing to do" if ($line eq '');
+    while (my $line=<$socket>) {
+       chomp ($line);
+       next unless ($line);
+       $res=undef,
+       $gC->{'action'} = '', $gC->{'objecttype'} = '', $gC->{'cachemaxage'} = '', $gC->{'key'} = '', $gC->{'sitename'} = '',  $gC->{'sitename_given'}= FALSE;
+       logMessage("[.]\t\tIncoming line: '$line'", DEBUG_LOW);
+       # split line to action, object type, sitename, key, id, cache_timeout (need to add user name, user password, controller version ?)
+       my ($opt_a, $opt_o, $opt_s, $opt_k, $opt_i, $opt_c)=split(",",$line);
 
-    print "\n[.]\t\tIncoming line: '$line'" if ($_[0]->{'debuglevel'} >= DEBUG_LOW);
-    # split line to action, object type, sitename, key, id, user name, user password, controller version, cache_timeout
-    my ($opt_a, $opt_o, $opt_s, $opt_k, $opt_i, $opt_u, $opt_p, $opt_v, $opt_c)=split(",",$line);
+       # Rewrite default values (taken from globalConfig) by command line arguments
+       $gC->{'action'}       = $opt_a ? $opt_a : $_[0]->{'action'};
+       $gC->{'objecttype'}   = $opt_o ? $opt_o : $_[0]->{'objecttype'};
+       $gC->{'key'}          = $opt_k ? $opt_k : $_[0]->{'key'};
 
-    # Rewrite default values (taken from globalConfig) by command line arguments
-    $gC->{'action'}       = $opt_a if ($opt_a);
-    $gC->{'objecttype'}   = $opt_o if ($opt_o);
-    $gC->{'unifiuser'}    = $opt_u if ($opt_u);
-    $gC->{'unifipass'}    = $opt_p if ($opt_p);
-    $gC->{'unifiversion'} = $opt_v if ($opt_v);
-    $gC->{'cachemaxage'}  = $opt_c if ($opt_c);
-    $gC->{'key'}          = $opt_k;
+       # if opt_c given, but = 0 - "$opt_k ?" is false and $gC->{'cachemaxage'} take default value;
+       $gC->{'cachemaxage'}  = defined($opt_c) ? $opt_c : $_[0]->{'cachemaxage'};
 
-    # opt_s not '' (virtual -s option used) -> use given sitename. Otherwise use 'default'
-    $gC->{'sitename'}      = ($opt_s) ? ($opt_s) : $gC->{'default_sitename'};
-    # flag for LLD routine
-    $gC->{'sitename_given'}= TRUE if ($opt_s);
-
-    # test for $opt_i is MAC or ID
-    if ($opt_i) {
-       $_=uc($opt_i);
-       if ( /^([0-9A-Z]{2}[:-]){5}([0-9A-Z]{2})$/ ) {
-          # is MAC
-          $gC->{'mac'} = $opt_i;
+       # opt_s not '' (virtual -s option used) -> use given sitename. Otherwise use 'default'
+       if (defined($opt_s)) {
+           $gC->{'sitename_given'} = TRUE,
+           $gC->{'sitename'}       = $opt_s;
        } else {
-          # is ID
-          $gC->{'id'} = $opt_i;
+           $gC->{'sitename_given'} = FALSE,
+           $gC->{'sitename'}     = $_[0]->{'default_sitename'};
        }
-    }
 
-    $gC->{'api_path'}      = "$gC->{'unifilocation'}/api";
-    $gC->{'login_path'}    = "$gC->{'unifilocation'}/api/login";
-    $gC->{'logout_path'}   = "$gC->{'unifilocation'}/logout";
-    $gC->{'login_data'}    = "username=$gC->{'unifiuser'}&password=$gC->{'unifipass'}&login=login";
-    $gC->{'login_type'}    = 'x-www-form-urlencoded';
+       # test for $opt_i is MAC or ID
+       if ($opt_i) {
+          $_=uc($opt_i);
+          if ( /^([0-9A-Z]{2}[:-]){5}([0-9A-Z]{2})$/ ) {
+             # is MAC
+             $gC->{'mac'} = $opt_i;
+          } else {
+             # is ID
+             $gC->{'id'} = $opt_i;
+          }
+       }
 
-    # Set controller version specific data
-    if ($gC->{'unifiversion'} eq CONTROLLER_VERSION_4) {
-       $gC->{'login_data'} = "{\"username\":\"$gC->{'unifiuser'}\",\"password\":\"$gC->{'unifipass'}\"}",
-       $gC->{'login_type'} = 'json',
-       # Data fetch rules.
-       # BY_GET mean that data fetched by HTTP GET from .../api/[s/<site>/]{'path'} operation.
-       #    [s/<site>/] must be excluded from path if {'excl_sitename'} is defined
-       # BY_CMD say that data fetched by HTTP POST {'cmd'} to .../api/[s/<site>/]{'path'}
-       #
-       $gC->{'fetch_rules'} = {
-       # `&` let use value of constant, otherwise we have 'OBJ_UAP' => {...} instead 'uap' => {...}
-       #     &OBJ_HEALTH => {'method' => BY_GET, 'path' => 'stat/health'},
-          &OBJ_SITE     => {'method' => BY_GET, 'path' => 'self/sites', 'excl_sitename' => TRUE},
-          &OBJ_UAP      => {'method' => BY_GET, 'path' => 'stat/device'},
-          &OBJ_UPH      => {'method' => BY_GET, 'path' => 'stat/device'},
-          &OBJ_USG      => {'method' => BY_GET, 'path' => 'stat/device'},
-          &OBJ_USW      => {'method' => BY_GET, 'path' => 'stat/device'},
-          &OBJ_USW_PORT => {'method' => BY_GET, 'path' => 'stat/device'},
-          &OBJ_USER     => {'method' => BY_GET, 'path' => 'stat/sta'},
-          &OBJ_WLAN     => {'method' => BY_GET, 'path' => 'list/wlanconf'}
-       };
-    } elsif ($gC->{'unifiversion'} eq CONTROLLER_VERSION_3) {
-       $gC->{'fetch_rules'} = {
-          # `&` let use value of constant, otherwise we have 'OBJ_UAP' => {...} instead 'uap' => {...}
-          &OBJ_SITE => {'method' => BY_CMD, 'path' => 'cmd/sitemgr', 'cmd' => '{"cmd":"get-sites"}'},
-          #&OBJ_SYSINFO => {'method' => BY_GET, 'path' => 'stat/sysinfo'},
-          &OBJ_UAP  => {'method' => BY_GET, 'path' => 'stat/device'},
-          &OBJ_USER => {'method' => BY_GET, 'path' => 'stat/sta'},
-          &OBJ_WLAN => {'method' => BY_GET, 'path' => 'list/wlanconf'}
-       };
-    } elsif ($gC->{'unifiversion'} eq CONTROLLER_VERSION_2) {
-       $gC->{'fetch_rules'} = {
-       # `&` let use value of constant, otherwise we have 'OBJ_UAP' => {...} instead 'uap' => {...}
-          &OBJ_UAP  => {'method' => BY_GET, 'path' => 'stat/device', 'excl_sitename' => TRUE},
-          &OBJ_WLAN => {'method' => BY_GET, 'path' => 'list/wlanconf', 'excl_sitename' => TRUE},
-          &OBJ_USER => {'method' => BY_GET, 'path' => 'stat/sta', 'excl_sitename' => TRUE}
-       };
-    } else {
-       return "[!]", MSG_UNKNOWN_CONTROLLER_VERSION, ": '$gC->{'unifiversion'},'";
-    }
+       # flag for LLD routine
+      if ($gC->{'action'} eq ACT_DISCOVERY) {
+          # Call sub for made LLD-like JSON
+          logMessage("[*] LLD", DEBUG_LOW);
+          makeLLD($gC, $res);
+       } else { 
+         if ($gC->{'key'}) {
+             # Key is given - need to get metric. 
+             # if $globalConfig->{'id'} is exist then metric of this object has returned. 
+             # If not - calculate $globalConfig->{'action'} for all items in objects list (all object of type = 'object name', for example - all 'uap'
+             # load JSON data & get metric
+             logMessage("[*] Key given: $gC->{'key'}", DEBUG_LOW);
+             getMetric($gC, \@objJSON, $gC->{'key'}, $res) if (fetchData($gC, $gC->{'sitename'}, $gC->{'objecttype'}, \@objJSON));
+         }
+       }
 
- 
-#     print "\n\t", Dumper $gC, "\n" if  ($gC->{'debuglevel'} >= DEBUG_MID);
-#     print "\n\t", Dumper $gC, "\n";
-#     die;
+       # Value could be 'null'. If need to replace null to other char - {'null_char'} must be defined
+       $res = $res ? $res : $gC->{'null_char'} if (defined($gC->{'null_char'}));
+       # Push result of work to stdout
+       print $socket (defined($res) ? "$res\n" : "\n");
+       @objJSON=();
+  }
 
-#    print "object handling ... not supported for v..." unless $gC->fetch_rules->{obj};
-    
-    if ($gC->{'action'} eq ACT_DISCOVERY) {
-       # Call sub for made LLD-like JSON
-       print "\n[*] LLD" if ($gC->{'debuglevel'} >= DEBUG_LOW);
-       makeLLD($gC, $res);
-       # Logout need if logging in before (in fetchData() sub) completed
-       print "\n[*] Logout from UniFi controller" if ($gC->{'debuglevel'} >= DEBUG_LOW);
-       $gC->{'ua'}->get($gC->{'logout_path'}) if ($gC->{'logged_in'});
-    } else { 
-      if ($gC->{'key'}) {
-          # Key is given - need to get metric. 
-          # if $globalConfig->{'id'} is exist then metric of this object has returned. 
-          # If not - calculate $globalConfig->{'action'} for all items in objects list (all object of type = 'object name', for example - all 'uap'
-          # load JSON data & get metric
-          print "\n[*] Key given: $gC->{'key'}" if ($gC->{'debuglevel'} >= DEBUG_LOW);
-          fetchData($gC, $gC->{'sitename'}, $gC->{'objecttype'}, \@objJSON);
-          # Logout need if logging in before (in fetchData() sub) completed
-          print "\n[*] Logout from UniFi controller" if ($gC->{'debuglevel'} >= DEBUG_LOW);
-          $gC->{'ua'}->get($gC->{'logout_path'}) if ($gC->{'logged_in'});
-          getMetric($gC, \@objJSON, $gC->{'key'}, $res);
-      } else { 
-#          return 
-           die '[!] No key given - nothing to do';
-      }
-    }
-
-    # Value could be 'null'. If need to replace null to other char - {'null_char'} must be defined
-    $res = $res ? $res : $gC->{'null_char'} if (defined($gC->{'null_char'}));
-
-    print "\n" if  ($gC->{'debuglevel'} >= DEBUG_LOW);
-
-    # Push result of work to stdout
-    print $socket (defined($res) ? "$res" : '\n');
-    undef @objJSON; undef $gC;
-    return TRUE;
+      # Logout need if logging in before (in fetchData() sub) completed
+      logMessage("[*] Logout from UniFi controller", DEBUG_LOW), $gC->{'ua'}->get($gC->{'logout_path'}) if ($gC->{'logged_in'});
+      return TRUE;
 }
-
+    
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 #
 #  Recursively go through the key and take/form value of metric
@@ -390,11 +367,11 @@ sub getMetric {
     # dive to...
     $_[0]->{'dive_level'}++;
 
-    print "\n[+] ($_[0]->{'dive_level'}) getMetric() started" if ($_[0]->{'debuglevel'} >= DEBUG_LOW);
+    logMessage("[+] ($_[0]->{'dive_level'}) getMetric() started", DEBUG_LOW);
     my $key=$_[2];
 
-    print "\n[>]\t args: key: '$_[2]', action: '$_[0]->{'action'}'" if ($_[0]->{'debuglevel'} >= DEBUG_MID);
-    print "\n[>]\t incoming object info:'\n\t", Dumper $_[1] if ($_[0]->{'debuglevel'} >= DEBUG_HIGH);
+    logMessage("[>]\t args: key: '$_[2]', action: '$_[0]->{'action'}'", DEBUG_LOW);
+#    logMessage("[>]\t incoming object info:'\n\t".(Dumper $_[1]), DEBUG_HIGH);
 
     # correcting maxDepth for ACT_COUNT operation
     $_[0]->{'max_depth'} = ($_[0]->{'dive_level'} > $_[0]->{'max_depth'}) ? $_[0]->{'dive_level'} : $_[0]->{'max_depth'};
@@ -403,14 +380,14 @@ sub getMetric {
     # if $_[1] is array - need to explore any element
     if (ref($_[1]) eq 'ARRAY') {
        my $paramValue, my $objList=@{$_[1]};
-       print "\n[.]\t\t Array with ", $objList, " objects detected" if ($_[0]->{'debuglevel'} >= DEBUG_MID);
+       logMessage("[.]\t\t Array with $objList objects detected", DEBUG_MID);
 
        # if metric ask "how much items (AP's for example) in all" - just return array size (previously calculated in $objList) and do nothing more
        if ($key eq KEY_ITEMS_NUM) { 
           $_[3]=$objList; 
        } else {
           $_[3]=0; 
-          print ", taking value from all sections" if ($_[0]->{'debuglevel'} >= DEBUG_MID);
+          logMessage("[.]\t\t Taking value from all sections", DEBUG_MID);
           # Take each element of array
           for (my $i=0; $i < $objList; $i++ ) {
             # Init $paramValue for right actions doing
@@ -419,12 +396,12 @@ sub getMetric {
             # that is bad strategy, because sub calling anytime without tesing of key existiense, but that testing can be slower, that sub recalling 
             #                                                                                                                    (if filter-key used)
             getMetric($_[0], $_[1][$i], $key, $paramValue); 
-            print "\n[.]\t\t paramValue: '$paramValue'" if ($_[0]->{'debuglevel'} >= DEBUG_HIGH);
+            logMessage("[.]\t\t paramValue: '$paramValue'", DEBUG_HIGH) if (defined($paramValue));
 
 
             # Otherwise - do something line sum or count
             if (defined($paramValue)) {
-               print "\n[.]\t\t act #$_[0]->{'action'} " if ($_[0]->{'debuglevel'} >= DEBUG_MID);
+               logMessage("[.]\t\t act #$_[0]->{'action'}", DEBUG_MID);
 
                # With 'get' action jump out from loop with first recieved value
                $_[3]=$paramValue, last if ($_[0]->{'action'} eq ACT_GET);
@@ -445,12 +422,12 @@ sub getMetric {
                   }
               }
             }
-            print "\n[.]\t\t Value: '$paramValue', result: '$_[3]'" if ($_[0]->{'debuglevel'} >= DEBUG_MID);
+            logMessage("[.]\t\t Value: '$paramValue', result: '$_[3]'", DEBUG_MID) if (defined($paramValue));
           } #foreach 
        }
    } else { # if (ref($_[1]) eq 'ARRAY') {
       # it is not array (list of objects) - it's one object (hash)
-      print "\n[.]\t\t Just one object detected." if ($_[0]->{'debuglevel'} >= DEBUG_MID);
+      logMessage("[.]\t\t Just one object detected", DEBUG_MID);
       my $tableName, my @fData=(), my $matchCount=0;
       ($tableName, $key) = split(/[.]/, $key, 2);
 
@@ -483,7 +460,7 @@ sub getMetric {
 
        # Test current object with filter-keys 
        if (@fData) {
-          print "\n[.]\t\t Matching object's keys" if ($_[0]->{'debuglevel'} >= DEBUG_MID);
+          logMessage("\t\t Matching object's keys...", DEBUG_MID);
           # run trought flter list
           for (my $i=0; $i < @fData; $i++ ) {
              # if key (from filter) in object is defined and its value equal to value of filter - increase counter
@@ -495,24 +472,23 @@ sub getMetric {
        # In this case $result must stay undefined for properly processed on previous dive level if subroutine is called recursively
        # Pass inside if no filter defined (@fData == $matchCount == 0) or all keys is matched
        if ($matchCount == @fData) {
-          print "\n[.]\t\t Object is good" if ($_[0]->{'debuglevel'} >= DEBUG_MID);
+          logMessage("[.]\t\t Object is good", DEBUG_MID);
           if ($tableName && defined($_[1]->{$tableName})) {
              # if subkey was detected (tablename is given an exist) - do recursively calling getMetric func with subtable and subkey and get value from it
-             print "\n[.]\t\t It's object. Go inside" if ($_[0]->{'debuglevel'} >= DEBUG_MID);
+             logMessage("[.]\t\t It's object. Go inside", DEBUG_MID);
              getMetric($_[0], $_[1]->{$tableName}, $key, $_[3]); 
           } elsif (defined($_[1]->{$key})) {
              # Otherwise - just return value for given key
-             print "\n[.]\t\t It's key. Take value... '$_[1]->{$key}'" if ($_[0]->{'debuglevel'} >= DEBUG_MID);
+             logMessage("[.]\t\t It's key. Take value... '$_[1]->{$key}'", DEBUG_MID);
              $_[3]=$_[1]->{$key};
           } else {
-             print "\n[.]\t\t No key or table exist :(" if ($_[0]->{'debuglevel'} >= DEBUG_MID);
+             logMessage("[.]\t\t No key or table exist :(", DEBUG_MID);
           }
        } # if ($matchCount == @fData)
    } # if (ref($_[1]) eq 'ARRAY') ... else ...
 
-  print "\n[<] ($_[0]->{'dive_level'}) getMetric() finished (" if ($_[0]->{'debuglevel'} >= DEBUG_LOW);
-  print $_[3] if ($_[0]->{'debuglevel'} >= DEBUG_LOW && defined($_[3]));
-  print ") /$_[0]->{'max_depth'}/ " if ($_[0]->{'debuglevel'} >= DEBUG_LOW);
+  logMessage("[<] ($_[0]->{'dive_level'}) getMetric() finished /$_[0]->{'max_depth'}/", DEBUG_LOW);
+  logMessage("[<] result: ($_[3])", DEBUG_LOW) if (defined($_[3]));
 
   #float up...
   $_[0]->{'dive_level'}--;
@@ -530,96 +506,93 @@ sub fetchData {
    # $_[1] - sitename
    # $_[2] - object type
    # $_[3] - jsonData object ref
-   print "\n[+] fetchData() started" if ($_[0]->{'debuglevel'} >= DEBUG_LOW);
-   print "\n[>]\t args: object type: '$_[0]->{'objecttype'}'" if ($_[0]->{'debuglevel'} >= DEBUG_MID);
-   print ", id: '$_[0]->{'id'}'" if ($_[0]->{'debuglevel'} >= DEBUG_MID && $_[0]->{'id'});
-   print ", mac: '$_[0]->{'mac'}'" if ($_[0]->{'debuglevel'} >= DEBUG_MID && $_[0]->{'mac'});
-   my $cacheExpire=FALSE, my $needReadCache=TRUE, my $fh, my $jsonData, my $cacheFileName, my $tmpCacheFileName, my $objID,
-   my $objPath, my $objType, my $givenObjType=$_[2];
+   logMessage("[+] fetchData() started", DEBUG_LOW);
+   logMessage("[>]\t args: object type: '$_[0]->{'objecttype'}'", DEBUG_MID);
+   logMessage("[>]\t id: '$_[0]->{'id'}'", DEBUG_MID) if ($_[0]->{'id'});
+   logMessage("[>]\t mac: '$_[0]->{'mac'}'", DEBUG_MID) if ($_[0]->{'mac'});
+   my $cacheExpire=TRUE, my $needReadCache=TRUE, my $fh, my $jsonData, my $cacheFileName, my $tmpCacheFileName,  my $objPath;
 
    $objPath  = $_[0]->{'api_path'} . ($_[0]->{'fetch_rules'}->{$_[2]}->{'excl_sitename'} ? '' : "/s/$_[1]") . "/$_[0]->{'fetch_rules'}->{$_[2]}->{'path'}";
    # if MAC is given with command-line option -  RapidWay for Controller v4 is allowed
    $objPath.="/$_[0]->{'mac'}" if (($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_4) && $_[0]->{'mac'});
-   print "\n[.]\t\t Object path: '$objPath'" if ($_[0]->{'debuglevel'} >= DEBUG_MID);
+   logMessage("[.]\t\t Object path: '$objPath'", DEBUG_MID);
 
    ################################################## Take JSON  ##################################################
 
-   # If cache timeout setted to 0 then no try to read/update cache - fetch data from controller
+   # If CacheMaxAge = 0 - do not try to read/update cache - fetch data from controller
    if (0 == $_[0]->{'cachemaxage'}) {
-      print "\n[.]\t\t No read/update cache because cache timeout = 0" if ($_[0]->{'debuglevel'} >= DEBUG_MID);
+      logMessage("[.]\t\t No read/update cache because CacheMaxAge = 0", DEBUG_MID);
       fetchDataFromController($_[0], $objPath, $jsonData);
    } else {
       # Change all [:/.] to _ to make correct filename
-      ($cacheFileName = $objPath) =~ tr/\/\:\./_/;
+      ($cacheFileName = $objPath) =~ tr/\/\:\./_/, 
       $cacheFileName = $_[0]->{'cacheroot'} .'/'. $cacheFileName;
       # Cache filename point to dir? If so - die to avoid problem with read or link/unlink operations
-      die "[!] Can't handle '$tmpCacheFileName' through its dir, stop." if (-d $cacheFileName);
-      print "\n[.]\t\t Cache file name: '$cacheFileName'" if ($_[0]->{'debuglevel'} >= DEBUG_MID);
-      # Cache file is exist and non-zero size?
-      if (-e $cacheFileName && -s $cacheFileName) { 
-         # Yes, is exist.
-         # If cache is expire...
-         my @fileStat=stat($cacheFileName);
-         $cacheExpire = TRUE if (($fileStat[9] + $_[0]->{'cachemaxage'}) < time()) 
+#      (-d $cacheFileName) || logMessage("[!] Can't handle '$tmpCacheFileName' through its dir, stop.", DEBUG_LOW), return FALSE;
+      logMessage("[.]\t\t Cache file name: '$cacheFileName'", DEBUG_MID);
+      # Cache file is exist and non-zero size? // need -e $cacheFileName or not?
+      if (-s $cacheFileName) { 
+         # Yes, it is non-zero -> exist.
+         # Check cache age
+         my @fileStat = stat($cacheFileName);
+         $cacheExpire = FALSE if (($fileStat[9] + $_[0]->{'cachemaxage'}) > time());
          # Cache file is not exist => cache is expire => need to create
-      } else { 
-         $cacheExpire = TRUE; 
       }
 
       if ($cacheExpire) {
-      # Cache expire - need to update
-         print "\n[.]\t\t Cache expire or not found. Renew..." if ($_[0]->{'debuglevel'} >= DEBUG_MID);
-         $tmpCacheFileName=$cacheFileName . ".tmp";
+         # Cache expire - need to update
+         logMessage("[.]\t\t Cache expire or not found. Renew...", DEBUG_MID);
+         $tmpCacheFileName = $cacheFileName . ".tmp";
          # Temporary cache filename point to dir? If so - die to avoid problem with write or link/unlink operations
-         die "[!] Can't handle '$tmpCacheFileName' through its dir, stop." if (-d $tmpCacheFileName);
-         print "\n[.]\t\t Temporary cache file='$tmpCacheFileName'" if ($_[0]->{'debuglevel'} >= DEBUG_MID);
-         open ($fh, ">", $tmpCacheFileName);# or die "Could open not $tmpCacheFileName to write";
-         # try to lock temporary cache file and no wait for locking.
-         # LOCK_EX | LOCK_NB
-         if (flock ($fh, 2 | 4)) {
-            # if Miner could lock temporary file, it...
-            chmod 0666, $fh;
+         logMessage("[!] Can't handle '$tmpCacheFileName' through its dir, stop.", DEBUG_LOW), return FALSE if (-d $tmpCacheFileName);
+         logMessage("[.]\t\t Temporary cache file='$tmpCacheFileName'", DEBUG_MID);
+         if (open ($fh, ">", $tmpCacheFileName)) {
+               # try to lock temporary cache file and no wait for locking.
+               # LOCK_EX | LOCK_NB
+            if (flock ($fh, 2 | 4)) {
+               # if Miner could lock temporary file, it...
+               chmod (0666, $fh);
+               # ...fetch new data from controller...
+               fetchDataFromController($_[0], $objPath, $jsonData);
+               # unbuffered write it to temp file..
+               syswrite ($fh, $_[0]->{'jsonxs'}->encode($jsonData));
+               # Now unlink old cache filedata from cache filename 
+               # All processes, who already read data - do not stop and successfully completed reading
+               unlink ($cacheFileName);
+               # Link name of cache file to temp file. File will be have two link - to cache and to temporary cache filenames. 
+               # New run down processes can get access to data by cache filename
+               link($tmpCacheFileName, $cacheFileName) or logMessage("[!] Presumably no rights to unlink '$cacheFileName' file ($!). Try to delete it ", DEBUG_LOW), return FALSE;
+               # Unlink temp filename from file. 
+               # Process, that open temporary cache file can do something with filedata while file not closed
+               unlink($tmpCacheFileName) or logMessage("[!] '$tmpCacheFileName' unlink error ($!), stop", DEBUG_LOW), return FALSE;
+               # Close temporary file. close() unlock filehandle.
+               close($fh) or logMessage("[!] Can't close locked temporary cache file '$tmpCacheFileName' ($!), stop", DEBUG_LOW), return FALSE; 
+               # No cache read from file need
+               $needReadCache=FALSE;
+            } else {
+               close ($fh) or logMessage("[!] Can't close temporary cache file '$tmpCacheFileName' ($!), stop", DEBUG_LOW), return FALSE;
+            }
+        }
+      } # if ($cacheExpire)
 
-            # ...fetch new data from controller...
-            fetchDataFromController($_[0], $objPath, $jsonData);
-            # unbuffered write it to temp file..
-            syswrite ($fh, JSON::XS::encode_json($jsonData));
-            # Now unlink old cache filedata from cache filename 
-            # All processes, who already read data - do not stop and successfully completed reading
-            unlink $cacheFileName;
-            # Link name of cache file to temp file. File will be have two link - to cache and to temporary cache filenames. 
-            # New run down processes can get access to data by cache filename
-            link $tmpCacheFileName, $cacheFileName  or die "\n[!] Presumably no rights to unlink '$cacheFileName' file. Try to delete it ($!)";
-            # Unlink temp filename from file. 
-            # Process, that open temporary cache file can do something with filedata while file not closed
-            unlink $tmpCacheFileName  or die "\n[!] '$tmpCacheFileName' unlink error \n";
-            # Close temporary file. close() unlock filehandle.
-            close $fh or die "[!] Can't close locked temporary cache file ($!)";;
-            # No cache read from file need
-            $needReadCache=FALSE;
-         } else {
-            close $fh or die "[!] Can't close temporary cache file ($!), stop.";;
-         }
-   } # if ($cacheExpire)
-
-    # if need load data from cache file
-    if ($needReadCache) {
+      # if need load data from cache file
+      if ($needReadCache) {
        # open file
-       open ($fh, "<", $cacheFileName) or die "[!] Can't open '$cacheFileName' ($!), stop.";
+       open($fh, "<:mmap", $cacheFileName) or logMessage("[!] Can't open '$cacheFileName' ($!), stop.", DEBUG_LOW), return FALSE;
        # read data from file
-       $jsonData=JSON::XS::decode_json(<$fh>);
+#       $jsonData=JSON::XS::decode_json(<$fh>);
+       $jsonData=$_[0]->{'jsonxs'}->decode(<$fh>);
        # close cache
-       close $fh or die "[!] Can't close cache file ($!), stop.";
+       close($fh) or logMessage( "[!] Can't close cache file ($!), stop.", DEBUG_LOW), return FALSE;
     }
   } # if (0 == $_[0]->{'cachemaxage'})
 
   ################################################## JSON processing ##################################################
-
   # Take each object
   for (my $i=0; $i < @{$jsonData}; $i++) {
-     # Test object type or pass if 'obj-have-no-type' (workaround for WLAN, for example)
-     $objType=@{$jsonData}[$i]->{'type'};
-     next if ($objType && ($objType ne $givenObjType));
+     # Test object's type or pass if 'obj-have-no-type' (workaround for WLAN, for example)
+     my $objType=@{$jsonData}[$i]->{'type'};
+     next if (defined($objType) && ($objType ne $_[2]));
      # ID is given by command-line?
      # No ID given. Push all object which have correct type and skip next steps
      push (@{$_[3]}, @{$jsonData}[$i]), next unless ($_[0]->{'id'});
@@ -628,15 +601,15 @@ sub fetchData {
 
      # Taking from json-key object's ID
      # UBNT Phones store ID into 'device_id' key (?)
-     $objID = ($givenObjType eq OBJ_UPH) ? @{$jsonData}[$i]->{'device_id'} : $objID=@{$jsonData}[$i]->{'_id'}; 
+     my $objID = ($_[2] eq OBJ_UPH) ? @{$jsonData}[$i]->{'device_id'} : @{$jsonData}[$i]->{'_id'}; 
 
      # It is required object?
      # Yes. Push object to global @objJSON and jump out from the loop
      push (@{$_[3]}, @{$jsonData}[$i]), last if ($objID eq $_[0]->{'id'});
    } # foreach jsonData
 
-   print "\n[<]\t Fetched data:\n\t", Dumper $_[3] if ($_[0]->{'debuglevel'} >= DEBUG_HIGH);
-   print "\n[-] fetchData() finished" if ($_[0]->{'debuglevel'} >= DEBUG_LOW);
+#   logMessage("[<]\t Fetched data:\n\t".(Dumper $_[3]), DEBUG_HIGH);
+   logMessage("[-] fetchData() finished", DEBUG_LOW);
    return TRUE;
 }
 
@@ -652,8 +625,8 @@ sub fetchDataFromController {
    my $response, my $fetchType=$_[0]->{'fetch_rules'}->{$_[0]->{'objecttype'}}->{'method'}, 
    my $fetchCmd=$_[0]->{'fetch_rules'}->{$_[0]->{'objecttype'}}->{'cmd'};
 
-   print "\n[+] fetchDataFromController() started" if ($_[0]->{'debuglevel'} >= DEBUG_LOW);
-   print "\n[>]\t args: object path: '$_[1]'" if ($_[0]->{'debuglevel'} >= DEBUG_MID);
+   logMessage("[+] fetchDataFromController() started", DEBUG_LOW);
+   logMessage("[>]\t args: object path: '$_[1]'", DEBUG_LOW);
 
    # HTTP UserAgent init
    # Set SSL_verify_mode=off to login without certificate manipulation
@@ -663,9 +636,9 @@ sub fetchDataFromController {
    ################################################## Logging in  ##################################################
    # how to check 'still logged' state?
    unless ($_[0]->{'logged_in'}) {
-     print "\n[.]\t\t Try to log in into controller..." if ($_[0]->{'debuglevel'} >= DEBUG_LOW);
+     logMessage("[.]\t\t Try to log in into controller...", DEBUG_LOW);
      $response=$_[0]->{'ua'}->post($_[0]->{'login_path'}, 'Content_type' => "application/$_[0]->{'login_type'}", 'Content' => $_[0]->{'login_data'});
-     print "\n[>>]\t\t HTTP respose:\n\t", Dumper $response if ($_[0]->{'debuglevel'} >= DEBUG_HIGH);
+#     logMessage("[>>]\t\t HTTP respose:\n\t".(Dumper $response), DEBUG_HIGH);
      my $rc=$response->code;
      if ($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_4) {
         # v4 return 'Bad request' (code 400) on wrong auth
@@ -681,7 +654,7 @@ sub fetchDataFromController {
 #        # v2 code
 #        ;
        }
-     print " successfully" if ($_[0]->{'debuglevel'} >= DEBUG_LOW);
+     logMessage("Login successfully", DEBUG_LOW);
      $_[0]->{'logged_in'} = TRUE; 
   }
 
@@ -689,24 +662,24 @@ sub fetchDataFromController {
    ################################################## Fetch data from controller  ##################################################
 
    if (BY_CMD == $fetchType) {
-      print "\n[.]\t\t Fetch data with CMD method: '$fetchCmd'" if ($_[0]->{'debuglevel'} >= DEBUG_MID);
+      logMessage("[.]\t\t Fetch data with CMD method: '$fetchCmd'", DEBUG_MID);
       $response=$_[0]->{'ua'}->post($_[1], 'Content_type' => 'application/json', 'Content' => $fetchCmd);
 
    } elsif (BY_GET == $fetchType) {
-      print "\n[.]\t\t Fetch data with GET method from: '$_[1]'" if ($_[0]->{'debuglevel'} >= DEBUG_MID);
+      logMessage("[.]\t\t Fetch data with GET method from: '$_[1]'", DEBUG_MID);
       $response=$_[0]->{'ua'}->get($_[1]);
    }
 
    die "\n[!] JSON taking error, HTTP code: ", $response->status_line unless ($response->is_success), ", stop.";
-   print "\n[>>]\t Fetched data:\n\t", Dumper $response->decoded_content if ($_[0]->{'debuglevel'} >= DEBUG_HIGH);
-   $_[2]=JSON::XS::decode_json($response->decoded_content);
+#   logMessage("[>>]\t Fetched data:\n\t".(Dumper $response->decoded_content), DEBUG_HIGH);
+   $_[2]=$_[0]->{'jsonxs'}->decode($response->decoded_content);
    my $jsonMeta=$_[2]->{'meta'}->{'rc'};
    # server answer is ok ?
    die "[!] getJSON error: rc=$jsonMeta, stop." if ($jsonMeta ne 'ok'); 
    $_[2]=$_[2]->{'data'};
-   print "\n[<]\t decoded data:\n\t", Dumper $_[2] if ($_[0]->{'debuglevel'} >= DEBUG_HIGH);
+#   logMessage("[<]\t decoded data:\n\t".(Dumper $_[2]), DEBUG_HIGH);
 
-   print "\n[-] fetchDataFromController() finished" if ($_[0]->{'debuglevel'} >= DEBUG_LOW);
+   logMessage("[-] fetchDataFromController() finished", DEBUG_LOW);
    $_[0]->{'downloaded'}=TRUE;
    return TRUE;
 }
@@ -720,8 +693,8 @@ sub makeLLD {
     # $_[0] - $globalConfig
     # $_[1] - result
 
-    print "\n[+] makeLLD() started" if ($_[0]->{'debuglevel'} >= DEBUG_LOW);
-    print "\n[>]\t args: object type: '$_[0]->{'objecttype'}'" if ($_[0]->{'debuglevel'} >= DEBUG_MID);
+    logMessage("[+] makeLLD() started", DEBUG_LOW);
+    logMessage("[>]\t args: object type: '$_[0]->{'objecttype'}'", DEBUG_MID);
     my $jsonObj, my $lldResponse, my $lldPiece, my $siteList=(), my $objList, 
     my $givenObjType=$_[0]->{'objecttype'}, my $siteWalking=TRUE;
 
@@ -729,25 +702,25 @@ sub makeLLD {
 
     if (! $siteWalking) {
        # 'no sites walking' routine code here
-       print "\n[.]\t\t 'No sites walking' routine activated", if ($_[0]->{'debuglevel'} >= DEBUG_MID);
+       logMessage("[.]\t\t 'No sites walking' routine activated", DEBUG_MID);
 
        # Take objects
        # USW Ports LLD workaround: Store USW with given ID to $objList and then rewrite $objList with subtable {'port_table'}. 
        # Then make LLD for USW_PORT object
        if ($givenObjType eq OBJ_USW_PORT) {
-          fetchData($_[0], $_[0]->{'sitename'}, OBJ_USW, $objList);
-          $objList=@{$objList}[0]->{'port_table'};
+          fetchData($_[0], $_[0]->{'sitename'}, OBJ_USW, $objList);# or return FALSE;
+          $objList= $objList ? @{$objList}[0]->{'port_table'} : ();
        } else {
-          fetchData($_[0], $_[0]->{'sitename'}, $givenObjType, $objList);
+          fetchData($_[0], $_[0]->{'sitename'}, $givenObjType, $objList);# or return FALSE;
        }
 
-       print "\n[.]\t\t Objects list:\n\t", Dumper $objList if ($_[0]->{'debuglevel'} >= DEBUG_MID);
+#       logMessage("[.]\t\t Objects list:\n\t".(Dumper $objList), DEBUG_HIGH);
        # Add info to LLD-response 
        addToLLD($_[0], undef, $objList, $lldPiece) if ($objList);
     } else {
        # Get site list
-       fetchData($_[0], $_[0]->{'sitename'}, OBJ_SITE, $siteList);
-       print "\n[.]\t\t Sites list:\n\t", Dumper $siteList if ($_[0]->{'debuglevel'} >= DEBUG_MID);
+       fetchData($_[0], $_[0]->{'sitename'}, OBJ_SITE, $siteList);# or return FALSE;
+#       logMessage("\n[.]\t\t Sites list:\n\t".(Dumper $siteList), DEBUG_MID);
        # User ask LLD for 'site' object - make LLD piece with site list.
        if ($givenObjType eq OBJ_SITE) {
           addToLLD($_[0], undef, $siteList, $lldPiece) if ($siteList);
@@ -758,13 +731,13 @@ sub makeLLD {
              next if (exists($siteObj->{'attr_hidden'}) && (0+$siteObj->{'attr_hidden'}));
              # skip site, if '-s' option used and current site other, that given
              next if ($_[0]->{'sitename_given'} && ($_[0]->{'sitename'} ne $siteObj->{'name'}));
-             print "\n[.]\t\t Handle site: '$siteObj->{'name'}'" if ($_[0]->{'debuglevel'} >= DEBUG_MID);
+             logMessage("[.]\t\t Handle site: '$siteObj->{'name'}'", DEBUG_MID);
              # Not nulled list causes duplicate LLD items
              $objList=();
              # Take objects from foreach'ed site
-             fetchData($_[0], $siteObj->{'name'}, $givenObjType, $objList);
+             fetchData($_[0], $siteObj->{'name'}, $givenObjType, $objList);# or return FALSE;
              # Add its info to LLD-response 
-             print "\n[.]\t\t Objects list:\n\t", Dumper $objList if ($_[0]->{'debuglevel'} >= DEBUG_MID);
+#             logMessage("[.]\t\t Objects list:\n\t".(Dumper $objList), DEBUG_MID);
              addToLLD($_[0], $siteObj, $objList, $lldPiece) if ($objList);
           } 
        } 
@@ -773,9 +746,9 @@ sub makeLLD {
     # link LLD to {'data'} key
     $_[1]->{'data'} = $lldPiece;
     # make JSON
-    $_[1]=JSON::XS::encode_json($_[1]);
-    print "\n[<]\t Generated LLD:\n\t", Dumper $_[1] if ($_[0]->{'debuglevel'} >= DEBUG_HIGH);
-    print "\n[-] makeLLD() finished" if ($_[0]->{'debuglevel'} >= DEBUG_LOW);
+    $_[1]=$_[0]->{'jsonxs'}->encode($_[1]);
+#    logMessage("[<]\t Generated LLD:\n\t".(Dumper $_[1]), DEBUG_HIGH);
+    logMessage("[-] makeLLD() finished", DEBUG_LOW);
     return TRUE;
 }
 
@@ -790,8 +763,9 @@ sub addToLLD {
     # $_[2] - Incoming objects list
     # $_[3] - Outgoing objects list
     my $givenObjType=$_[0]->{'objecttype'};
-    print "\n[+] addToLLD() started" if ($_[0]->{'debuglevel'} >= DEBUG_LOW);
-    print "\n[>]\t args: object type: '$_[0]->{'objecttype'}', site name: '$_[1]->{'name'}'" if ($_[0]->{'debuglevel'} >= DEBUG_MID);
+    logMessage("[+] addToLLD() started", DEBUG_LOW);
+    logMessage("[>]\t args: object type: '$_[0]->{'objecttype'}'", DEBUG_MID);
+    logMessage("[>]\t       site name: '$_[1]->{'name'}'", DEBUG_MID) if ($_[1]->{'name'});;
 
     # $i - incoming object's array element pointer. 
     # $o - outgoing object's array element pointer, init as length of that array to append elements to the end
@@ -800,8 +774,9 @@ sub addToLLD {
       $_[3][$o]->{'{#NAME}'}     = $_[2][$i]->{'name'} if ($_[2][$i]->{'name'});
       $_[3][$o]->{'{#ID}'}       = $_[2][$i]->{'_id'} if ($_[2][$i]->{'_id'});
       # $_[1] is undefined if script uses with v2 controller or generate LLD for OBJ_SITE  
-      $_[3][$o]->{'{#SITENAME}'} = $_[1]->{'name'} if ($_[1]);
-      $_[3][$o]->{'{#SITEID}'}   = $_[1]->{'_id'} if ($_[1]);
+      # ...but undef transform to {} - why? Test length of hash...
+      $_[3][$o]->{'{#SITENAME}'} = $_[1]->{'name'} if (%{$_[1]});
+      $_[3][$o]->{'{#SITEID}'}   = $_[1]->{'_id'} if (%{$_[1]});
       $_[3][$o]->{'{#IP}'}       = $_[2][$i]->{'ip'}  if ($_[2][$i]->{'ip'});
       $_[3][$o]->{'{#MAC}'}      = $_[2][$i]->{'mac'} if ($_[2][$i]->{'mac'});
       # state of object: 0 - off, 1 - on
@@ -833,8 +808,8 @@ sub addToLLD {
       }
     }
 
-    print "\n[<]\t Generated LLD piece:\n\t", Dumper $_[3] if ($_[0]->{'debuglevel'} >= DEBUG_HIGH);
-    print "\n[-] addToLLD() finished" if ($_[0]->{'debuglevel'} >= DEBUG_LOW);
+#    logMessage("[<]\t Generated LLD piece:\n\t".(Dumper $_[3]), DEBUG_HIGH);
+    logMessage("\n[-] addToLLD() finished", DEBUG_LOW);
     return TRUE;
 }
 
@@ -860,15 +835,16 @@ sub readConf {
     }
     close($fh);
 
-   $globalConfig->{'listenip'}      = SERVER_DEFAULT_IP unless (defined($globalConfig->{'listenip'}));
-   $globalConfig->{'listenport'}    = SERVER_DEFAULT_PORT unless (defined($globalConfig->{'listenport'}));
-   $globalConfig->{'connlimit'}     = SERVER_DEFAULT_CONNLIMIT unless (defined($globalConfig->{'connlimit'}));
-   $globalConfig->{'startservers'}  = SERVER_DEFAULT_STARTSERVERS unless (defined($globalConfig->{'startservers'}));
+   $globalConfig->{'listenip'}             = SERVER_DEFAULT_IP unless (defined($globalConfig->{'listenip'}));
+   $globalConfig->{'listenport'}           = SERVER_DEFAULT_PORT unless (defined($globalConfig->{'listenport'}));
+   $globalConfig->{'maxclients'}           = SERVER_DEFAULT_MAXCLIENTS unless (defined($globalConfig->{'connlimit'}));
+   $globalConfig->{'startservers'}         = SERVER_DEFAULT_STARTSERVERS unless (defined($globalConfig->{'startservers'}));
+   $globalConfig->{'maxrequestsperchild'}  = SERVER_DEFAULT_MAXREQUESTSPERCHILD unless (defined($globalConfig->{'startservers'}));
 
    $globalConfig->{'action'}  	    = ACT_DISCOVERY unless (defined($globalConfig->{'action'}));
    $globalConfig->{'objecttype'}    = OBJ_WLAN unless (defined($globalConfig->{'objecttype'}));
 
-   $globalConfig->{'cacheroot'}     = '/run/shm' unless (defined($globalConfig->{'cacheroot'}));
+   $globalConfig->{'cacheroot'}     = '/dev/shm' unless (defined($globalConfig->{'cacheroot'}));
    $globalConfig->{'cachemaxage'}   = 60 unless (defined($globalConfig->{'cachemaxage'}));
    $globalConfig->{'unifilocation'} = '127.0.0.1:8443' unless (defined($globalConfig->{'unifilocation'}));
    $globalConfig->{'unifiversion'}  = CONTROLLER_VERSION_4 unless (defined($globalConfig->{'unifiversion'}));
@@ -878,28 +854,58 @@ sub readConf {
    $globalConfig->{'sitename'}      = 'default' unless (defined($globalConfig->{'sitename'}));
 
    # cast literal to digital
-   $globalConfig->{'cachemaxage'} += 0, $globalConfig->{'debuglevel'} += 0;
+   $globalConfig->{'cachemaxage'} += 0, $globalConfig->{'debuglevel'} += 0; $globalConfig->{'listenport'} +=0;
+   $globalConfig->{'startservers'} += 0, $globalConfig->{'maxrequestsperchild'} += 0; 
 
-   ############################  Service keys here. Do not change. #############################################################
-   #
-   # HiRes time of Miner internal processing start (not include Module Init stage)
-   $globalConfig->{'start_time'} = 0;
-   # HiRes time of Miner internal processing stop
-   $globalConfig->{'stop_time'} = 0;
-   # Level of dive (recursive call) for getMetric subroutine
-   $globalConfig->{'dive_level'} = 1;
-   # Max level to which getMetric is dived
-   $globalConfig->{'max_depth'} = 0;
-   # Data is downloaded instead readed from file
-   $globalConfig->{'downloaded'} = FALSE;
-   # LWP::UserAgent object, which must be saved between fetchData() calls
-   $globalConfig->{'ua'} = undef;
-   # Already logged sign
-   $globalConfig->{'logged_in'} = FALSE;
    # Sitename which replaced {'sitename'} if '-s' option not used
    $globalConfig->{'default_sitename'} = 'default';
-   # -s option used sign
-   $globalConfig->{'sitename_given'} = FALSE;
+
+    $globalConfig->{'api_path'}      = "$globalConfig->{'unifilocation'}/api";
+    $globalConfig->{'login_path'}    = "$globalConfig->{'unifilocation'}/api/login";
+    $globalConfig->{'logout_path'}   = "$globalConfig->{'unifilocation'}/logout";
+    $globalConfig->{'login_data'}    = "username=$globalConfig->{'unifiuser'}&password=$globalConfig->{'unifipass'}&login=login";
+    $globalConfig->{'login_type'}    = 'x-www-form-urlencoded';
+
+    # Set controller version specific data
+    if ($globalConfig->{'unifiversion'} eq CONTROLLER_VERSION_4) {
+       $globalConfig->{'login_data'} = "{\"username\":\"$globalConfig->{'unifiuser'}\",\"password\":\"$globalConfig->{'unifipass'}\"}",
+       $globalConfig->{'login_type'} = 'json',
+       # Data fetch rules.
+       # BY_GET mean that data fetched by HTTP GET from .../api/[s/<site>/]{'path'} operation.
+       #    [s/<site>/] must be excluded from path if {'excl_sitename'} is defined
+       # BY_CMD say that data fetched by HTTP POST {'cmd'} to .../api/[s/<site>/]{'path'}
+       #
+       $globalConfig->{'fetch_rules'} = {
+       # `&` let use value of constant, otherwise we have 'OBJ_UAP' => {...} instead 'uap' => {...}
+       #     &OBJ_HEALTH => {'method' => BY_GET, 'path' => 'stat/health'},
+          &OBJ_SITE     => {'method' => BY_GET, 'path' => 'self/sites', 'excl_sitename' => TRUE},
+          &OBJ_UAP      => {'method' => BY_GET, 'path' => 'stat/device'},
+          &OBJ_UPH      => {'method' => BY_GET, 'path' => 'stat/device'},
+          &OBJ_USG      => {'method' => BY_GET, 'path' => 'stat/device'},
+          &OBJ_USW      => {'method' => BY_GET, 'path' => 'stat/device'},
+          &OBJ_USW_PORT => {'method' => BY_GET, 'path' => 'stat/device'},
+          &OBJ_USER     => {'method' => BY_GET, 'path' => 'stat/sta'},
+          &OBJ_WLAN     => {'method' => BY_GET, 'path' => 'list/wlanconf'}
+       };
+    } elsif ($globalConfig->{'unifiversion'} eq CONTROLLER_VERSION_3) {
+       $globalConfig->{'fetch_rules'} = {
+          # `&` let use value of constant, otherwise we have 'OBJ_UAP' => {...} instead 'uap' => {...}
+          &OBJ_SITE => {'method' => BY_CMD, 'path' => 'cmd/sitemgr', 'cmd' => '{"cmd":"get-sites"}'},
+          #&OBJ_SYSINFO => {'method' => BY_GET, 'path' => 'stat/sysinfo'},
+          &OBJ_UAP  => {'method' => BY_GET, 'path' => 'stat/device'},
+          &OBJ_USER => {'method' => BY_GET, 'path' => 'stat/sta'},
+          &OBJ_WLAN => {'method' => BY_GET, 'path' => 'list/wlanconf'}
+       };
+    } elsif ($globalConfig->{'unifiversion'} eq CONTROLLER_VERSION_2) {
+       $globalConfig->{'fetch_rules'} = {
+       # `&` let use value of constant, otherwise we have 'OBJ_UAP' => {...} instead 'uap' => {...}
+          &OBJ_UAP  => {'method' => BY_GET, 'path' => 'stat/device', 'excl_sitename' => TRUE},
+          &OBJ_WLAN => {'method' => BY_GET, 'path' => 'list/wlanconf', 'excl_sitename' => TRUE},
+          &OBJ_USER => {'method' => BY_GET, 'path' => 'stat/sta', 'excl_sitename' => TRUE}
+       };
+    } else {
+       return "[!]", MSG_UNKNOWN_CONTROLLER_VERSION, ": '$globalConfig->{'unifiversion'},'";
+    }
 
    return TRUE;
 }

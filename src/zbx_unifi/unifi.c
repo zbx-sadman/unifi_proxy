@@ -117,6 +117,7 @@ int	zbx_module_unifi_proxy(AGENT_REQUEST *request, AGENT_RESULT *result)
                {
                   // Recive answer from UniFi Proxy
                   if (SUCCEED == (ret = zbx_tcp_recv(&s))) {
+                        zbx_rtrim(s.buffer, "\r\n");
                         SET_STR_RESULT(result, strdup(s.buffer));
                      }
                }
