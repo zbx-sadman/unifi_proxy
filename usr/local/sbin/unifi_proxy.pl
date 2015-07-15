@@ -305,7 +305,7 @@ sub handleConnection {
        $gC->{'cachemaxage'}  = defined($opt_c) ? $opt_c : $_[0]->{'cachemaxage'};
 
        # opt_s not '' (virtual -s option used) -> use given sitename. Otherwise use 'default'
-       if (defined($opt_s)) {
+       if ($opt_s) {
            $gC->{'sitename_given'} = TRUE,
            $gC->{'sitename'}       = $opt_s;
        } else {
