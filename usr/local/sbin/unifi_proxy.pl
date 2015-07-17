@@ -373,7 +373,8 @@ sub handleConnection {
        }
        $buffer .= "\n";
        # Push buffer to socket
-       syswrite($socket, $buffer, $buferLength);    
+       print $socket $buffer;
+#       syswrite($socket, $buffer, $buferLength);    
   }
 
   # Logout need if logging in before (in fetchData() sub) completed
