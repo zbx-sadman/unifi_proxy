@@ -11,12 +11,12 @@ use Data::Dumper;
 use JSON::XS ();
 use LWP ();
 use POSIX;
-use POSIX ":sys_wait_h";
+#use POSIX ":sys_wait_h";
 use IO::Socket;
-use IO::Handle;
-use Symbol;
+#use IO::Handle;
+#use Symbol;
 use IO::Socket::SSL ();
-use PerlIO;
+#use PerlIO;
 
 use constant {
      ACT_COUNT => 'count',
@@ -25,7 +25,8 @@ use constant {
      ACT_DISCOVERY => 'discovery',
      BY_CMD => 1,
      BY_GET => 2,
-     CONFIG_FILE_DEFAULT => '/etc/unifi_proxy/unifi_proxy.conf',
+#     CONFIG_FILE_DEFAULT => '/etc/unifi_proxy/unifi_proxy.conf',
+     CONFIG_FILE_DEFAULT => './unifi_proxy.conf',
      CONTROLLER_VERSION_2 => 'v2',
      CONTROLLER_VERSION_3 => 'v3',
      CONTROLLER_VERSION_4 => 'v4',
@@ -54,7 +55,8 @@ use constant {
      SERVER_DEFAULT_MAXREQUESTSPERCHILD => 1024,
      TRUE => 1,
      FALSE => 0,
-
+     MAX_BUFFER_LEN => 65536,
+     MAX_REQUEST_LEN => 256,
 };
 
 IO::Socket::SSL::set_default_context(new IO::Socket::SSL::SSL_Context(SSL_version => 'tlsv1', SSL_verify_mode => 0));
@@ -100,12 +102,11 @@ if ($options->{'help'}) {
 # take config filename from -"C"onfig option or from `default` const 
 my $configFile=(defined ($options->{'C'})) ? $options->{'C'} : CONFIG_FILE_DEFAULT;
 
-# in not defined -"F"oregroundMode option - going to daemon mode
-#unless (defined ($options->{'F'})) {
+# if defined -"D"aemonMode - act like daemon
 if (defined ($options->{'D'})) {
    my $pid = fork();
    exit() if $pid;
-   die "Couldn't fork: $! " unless defined($pid);
+   die "[!] Couldn't act as daemon ($!)\n" unless defined($pid);
    # Link session to term
    POSIX::setsid() || die "[!] Can't start a new session ($!)";
 }
@@ -118,7 +119,8 @@ my $servers_num    = 0;
 
 # Read config
 readConf;
-
+#print Dumper $globalConfig;
+#die;
 # Bind to addr:port
 my $server = IO::Socket::INET->new(LocalAddr => $globalConfig->{'listenip'}, 
                                    LocalPort => $globalConfig->{'listenport'}, 
@@ -130,26 +132,26 @@ my $server = IO::Socket::INET->new(LocalAddr => $globalConfig->{'listenip'},
 
 
 # Start new servers 
-for (1 .. $globalConfig->{'startservers'}) {
-    makeServer();
-}
+#for (1 .. $globalConfig->{'startservers'}) {
+#    makeServer();
+#}
 
 # Assign subs to handle Signals
-$SIG{INT}= \&handleINTSignal;
+$SIG{INT} = $SIG{TERM} = \&handleINTSignal;
 $SIG{HUP} = \&handleHUPSignal;
 $SIG{CHLD} = \&handleCHLDSignal;
 #$SIG{TERM}
 # And maintain the population.
 
 while (1) {
-    # wait for a signal (i.e., child's death)
-    sleep;                          
     for (my $i = $servers_num; $i < $globalConfig->{'startservers'}; $i++) {
         # add several server instances if need
         makeServer();             
     }
+    # wait for a signal (i.e., child's death)
+    sleep;                          
 }
-
+exit;
 
 ############################################################################################################################
 #
@@ -169,11 +171,19 @@ sub logMessage
 #
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 sub handleCHLDSignal {
+    my $pid;
+    while ( 0 < ($pid = waitpid(-1, WNOHANG))) {
+          delete $servers->{$pid};
+          $servers_num --;
+#         if ($pid == -1) {
+            # no child waiting.  Ignore it.
+#         } elsif (WIFEXITED($?)) {
+#           print "Process $pid exited.\n";
+#         } else {
+#           print "False alarm on $pid.\n";
+#         }
+    }
     $SIG{CHLD} = \&handleCHLDSignal;
-    my $pid = wait;
-#    print "\n [CHLD] reaper for $pid";
-    $servers_num --;
-    delete $servers->{$pid};
 }
 
 sub handleHUPSignal {
@@ -193,7 +203,6 @@ sub handleHUPSignal {
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 sub handleINTSignal {
     local($SIG{CHLD}) = 'IGNORE';   # we're going to kill our children
-#    print "\n [INT] kill servers", print Dumper $servers;
     kill 'INT' => keys $servers;
     exit;                           # clean up with dignity
 }
@@ -209,10 +218,7 @@ sub makeServer {
     my $pid;
     my $sigset;
     # make copy of global config to stop change $_[0] by fork's copy-write procedure
-#    my $gC;
    
-    # why `my` do not copy $globalConfig to $gC?
-#    while(my ($k,$v) = each $globalConfig) { $gC->{$k}= $v; };
     # block signal for fork
     $sigset = POSIX::SigSet->new(SIGINT);
     sigprocmask(SIG_BLOCK, $sigset) or die "[!] Can't block SIGINT for fork: $!\n";
@@ -279,40 +285,49 @@ sub makeServer {
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 sub handleConnection {
     my $socket = $_[1];
-    my $res;
     my @objJSON=();
     my $gC;
+    my $buffer;
+    my $buferLength;
 
     # copy serverConfig to localConfig for saving default values 
     %{$gC}=%{$_[0]};
 
     # read line from socket
-    while (my $line=<$socket>) {
-       chomp ($line);
-       next unless ($line);
-       $res=undef,
-       $gC->{'action'} = '', $gC->{'objecttype'} = '', $gC->{'cachemaxage'} = '', $gC->{'key'} = '', $gC->{'sitename'} = '',  $gC->{'sitename_given'}= FALSE;
-       logMessage("[.]\t\tIncoming line: '$line'", DEBUG_LOW);
+    while (1) {
+        $buffer=<$socket>;
+#       my $bytes=sysread($socket, $buffer, MAX_REQUEST_LEN);
+#       redo unless ($bytes < 0);
+       last unless ($buffer);
+       chomp ($buffer);
+       logMessage("[.]\t\tIncoming line: '$buffer'", DEBUG_LOW);
        # split line to action, object type, sitename, key, id, cache_timeout (need to add user name, user password, controller version ?)
-       my ($opt_a, $opt_o, $opt_s, $opt_k, $opt_i, $opt_c)=split(",",$line);
+       my ($opt_a, $opt_o, $opt_s, $opt_k, $opt_i, $opt_c)=split(",", $buffer);
+       $buffer=undef;
 
+       # fast validate object type  
+       $gC->{'objecttype'}   = $opt_o ? $opt_o : $_[0]->{'objecttype'};
+       unless ($gC->{'fetch_rules'}->{$opt_o}) {
+           $buffer="[!] No object type $gC->{'objecttype'} supported";
+           logMessage($buffer, DEBUG_LOW);
+           next;
+       }
+       # fast check action need too
+       # ...........
+   
        # Rewrite default values (taken from globalConfig) by command line arguments
        $gC->{'action'}       = $opt_a ? $opt_a : $_[0]->{'action'};
-       $gC->{'objecttype'}   = $opt_o ? $opt_o : $_[0]->{'objecttype'};
-       $gC->{'key'}          = $opt_k ? $opt_k : $_[0]->{'key'};
-
-       # if opt_c given, but = 0 - "$opt_k ?" is false and $gC->{'cachemaxage'} take default value;
-       $gC->{'cachemaxage'}  = defined($opt_c) ? $opt_c : $_[0]->{'cachemaxage'};
+       $gC->{'key'}          = $opt_k ? $opt_k  : '';
 
        # opt_s not '' (virtual -s option used) -> use given sitename. Otherwise use 'default'
-       if ($opt_s) {
-           $gC->{'sitename_given'} = TRUE,
-           $gC->{'sitename'}       = $opt_s;
-       } else {
-           $gC->{'sitename_given'} = FALSE,
-           $gC->{'sitename'}     = $_[0]->{'default_sitename'};
-       }
+       $gC->{'sitename'}     = $opt_s ? $opt_s : $_[0]->{'default_sitename'};
+       $gC->{'sitename_given'}  = $opt_s ? TRUE : FALSE;
 
+       # if opt_c given, but = 0 - "$opt_k ?" is false and $gC->{'cachemaxage'} take default value;
+       $gC->{'cachemaxage'}  = defined($opt_c) ? $opt_c+0 : $_[0]->{'cachemaxage'};
+
+       $gC->{'id'} = '';
+       $gC->{'mac'} = '';
        # test for $opt_i is MAC or ID
        if ($opt_i) {
           $_=uc($opt_i);
@@ -326,31 +341,44 @@ sub handleConnection {
        }
 
        # flag for LLD routine
-      if ($gC->{'action'} eq ACT_DISCOVERY) {
+       if ($gC->{'action'} eq ACT_DISCOVERY) {
           # Call sub for made LLD-like JSON
-          logMessage("[*] LLD", DEBUG_LOW);
-          makeLLD($gC, $res);
-       } else { 
-         if ($gC->{'key'}) {
-             # Key is given - need to get metric. 
-             # if $globalConfig->{'id'} is exist then metric of this object has returned. 
-             # If not - calculate $globalConfig->{'action'} for all items in objects list (all object of type = 'object name', for example - all 'uap'
-             # load JSON data & get metric
-             logMessage("[*] Key given: $gC->{'key'}", DEBUG_LOW);
-             getMetric($gC, \@objJSON, $gC->{'key'}, $res) if (fetchData($gC, $gC->{'sitename'}, $gC->{'objecttype'}, \@objJSON));
-         }
+          logMessage("[*] LLD requested", DEBUG_LOW);
+          makeLLD($gC, $buffer);
+          next;
        }
 
-       # Value could be 'null'. If need to replace null to other char - {'null_char'} must be defined
-       $res = $res ? $res : $gC->{'null_char'} if (defined($gC->{'null_char'}));
-       # Push result of work to stdout
-       print $socket (defined($res) ? "$res\n" : "\n");
-       @objJSON=();
+       if ($gC->{'key'}) {
+          # Key is given - need to get metric. 
+          # if $globalConfig->{'id'} is exist then metric of this object has returned. 
+          # If not - calculate $globalConfig->{'action'} for all items in objects list (all object of type = 'object name', for example - all 'uap'
+          # load JSON data & get metric
+          logMessage("[*] Key given: $gC->{'key'}", DEBUG_LOW);
+          if (! fetchData($gC, $gC->{'sitename'}, $gC->{'objecttype'}, \@objJSON)) {
+             $buffer="[!] FetchData error";
+             logMessage($buffer, DEBUG_LOW);
+             next;
+          }
+          getMetric($gC, \@objJSON, $gC->{'key'}, $buffer);
+          @objJSON=();
+       }
+  } continue {
+       # Value could be null-type (undef in Perl). If need to replace null to other char - {'null_char'} must be defined. On default $gC->{'null_char'} is ''
+       $buffer = $gC->{'null_char'} unless defined($buffer);
+       $buferLength = length($buffer);
+       # MAX_BUFFER_LEN - Zabbix buffer length. Sending more bytes have no sense.
+       if ( MAX_BUFFER_LEN <= $buferLength) {
+           $buferLength = MAX_BUFFER_LEN-1;
+           $buffer = substr($buffer, 0, $buferLength);
+       }
+       $buffer .= "\n";
+       # Push buffer to socket
+       syswrite($socket, $buffer, $buferLength);    
   }
 
-      # Logout need if logging in before (in fetchData() sub) completed
-      logMessage("[*] Logout from UniFi controller", DEBUG_LOW), $gC->{'ua'}->get($gC->{'logout_path'}) if ($gC->{'logged_in'});
-      return TRUE;
+  # Logout need if logging in before (in fetchData() sub) completed
+  logMessage("[*] Logout from UniFi controller", DEBUG_LOW), $gC->{'ua'}->get($gC->{'logout_path'}) if ($gC->{'logged_in'});
+  return TRUE;
 }
     
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
@@ -526,9 +554,9 @@ sub fetchData {
    } else {
       # Change all [:/.] to _ to make correct filename
       ($cacheFileName = $objPath) =~ tr/\/\:\./_/, 
-      $cacheFileName = $_[0]->{'cacheroot'} .'/'. $cacheFileName;
-      # Cache filename point to dir? If so - die to avoid problem with read or link/unlink operations
-#      (-d $cacheFileName) || logMessage("[!] Can't handle '$tmpCacheFileName' through its dir, stop.", DEBUG_LOW), return FALSE;
+      $cacheFileName = $_[0]->{'cachedir'} .'/'. $cacheFileName;
+      # Cache filename point exist and point to non regular file object? If so - die to avoid problem with read or link/unlink operations
+      ((! -e $cacheFileName) || (-f $cacheFileName)) or logMessage("[!] Can't handle '$cacheFileName' through its not regular file, stop.", DEBUG_LOW), return FALSE;
       logMessage("[.]\t\t Cache file name: '$cacheFileName'", DEBUG_MID);
       # Cache file is exist and non-zero size? // need -e $cacheFileName or not?
       if (-s $cacheFileName) { 
@@ -543,14 +571,14 @@ sub fetchData {
          # Cache expire - need to update
          logMessage("[.]\t\t Cache expire or not found. Renew...", DEBUG_MID);
          $tmpCacheFileName = $cacheFileName . ".tmp";
-         # Temporary cache filename point to dir? If so - die to avoid problem with write or link/unlink operations
-         logMessage("[!] Can't handle '$tmpCacheFileName' through its dir, stop.", DEBUG_LOW), return FALSE if (-d $tmpCacheFileName);
+         # Temporary cache filename exist and point to non regular file? If so - die to avoid problem with write or link/unlink operations
+         ((! -e $tmpCacheFileName) || (-f $tmpCacheFileName)) or logMessage("[!] Can't handle '$tmpCacheFileName' through its not regular file, stop.", DEBUG_LOW), return FALSE;
          logMessage("[.]\t\t Temporary cache file='$tmpCacheFileName'", DEBUG_MID);
          if (open ($fh, ">", $tmpCacheFileName)) {
                # try to lock temporary cache file and no wait for locking.
                # LOCK_EX | LOCK_NB
             if (flock ($fh, 2 | 4)) {
-               # if Miner could lock temporary file, it...
+               # if Proxy could lock temporary file, it...
                chmod (0666, $fh);
                # ...fetch new data from controller...
                fetchDataFromController($_[0], $objPath, $jsonData);
@@ -580,7 +608,6 @@ sub fetchData {
        # open file
        open($fh, "<:mmap", $cacheFileName) or logMessage("[!] Can't open '$cacheFileName' ($!), stop.", DEBUG_LOW), return FALSE;
        # read data from file
-#       $jsonData=JSON::XS::decode_json(<$fh>);
        $jsonData=$_[0]->{'jsonxs'}->decode(<$fh>);
        # close cache
        close($fh) or logMessage( "[!] Can't close cache file ($!), stop.", DEBUG_LOW), return FALSE;
@@ -695,10 +722,14 @@ sub makeLLD {
 
     logMessage("[+] makeLLD() started", DEBUG_LOW);
     logMessage("[>]\t args: object type: '$_[0]->{'objecttype'}'", DEBUG_MID);
-    my $jsonObj, my $lldResponse, my $lldPiece, my $siteList=(), my $objList, 
+    my $jsonObj, my $lldResponse, my $lldPiece; my $siteList=(), my $objList =(),
     my $givenObjType=$_[0]->{'objecttype'}, my $siteWalking=TRUE;
 
     $siteWalking=FALSE if (($givenObjType eq OBJ_USW_PORT) && ($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_4) || ($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_3));
+    
+    # return right JSON on error or not?
+    # $_[1]="{\"data\":[]}";
+    $_[1]="{\"data\":error on lld generate}";
 
     if (! $siteWalking) {
        # 'no sites walking' routine code here
@@ -708,19 +739,20 @@ sub makeLLD {
        # USW Ports LLD workaround: Store USW with given ID to $objList and then rewrite $objList with subtable {'port_table'}. 
        # Then make LLD for USW_PORT object
        if ($givenObjType eq OBJ_USW_PORT) {
-          fetchData($_[0], $_[0]->{'sitename'}, OBJ_USW, $objList);# or return FALSE;
+          fetchData($_[0], $_[0]->{'sitename'}, OBJ_USW, $objList) or return FALSE;
           $objList= $objList ? @{$objList}[0]->{'port_table'} : ();
        } else {
-          fetchData($_[0], $_[0]->{'sitename'}, $givenObjType, $objList);# or return FALSE;
+          fetchData($_[0], $_[0]->{'sitename'}, $givenObjType, $objList) or logMessage("[!] No data fetched from site $_[0]->{'sitename'}', stop", DEBUG_MID), return FALSE;
        }
 
 #       logMessage("[.]\t\t Objects list:\n\t".(Dumper $objList), DEBUG_HIGH);
        # Add info to LLD-response 
-       addToLLD($_[0], undef, $objList, $lldPiece) if ($objList);
+       addToLLD($_[0], undef, $objList, $lldPiece) if ($objList) 
     } else {
        # Get site list
-       fetchData($_[0], $_[0]->{'sitename'}, OBJ_SITE, $siteList);# or return FALSE;
+       fetchData($_[0], $_[0]->{'sitename'}, OBJ_SITE, $siteList) or return FALSE;
 #       logMessage("\n[.]\t\t Sites list:\n\t".(Dumper $siteList), DEBUG_MID);
+       
        # User ask LLD for 'site' object - make LLD piece with site list.
        if ($givenObjType eq OBJ_SITE) {
           addToLLD($_[0], undef, $siteList, $lldPiece) if ($siteList);
@@ -735,16 +767,17 @@ sub makeLLD {
              # Not nulled list causes duplicate LLD items
              $objList=();
              # Take objects from foreach'ed site
-             fetchData($_[0], $siteObj->{'name'}, $givenObjType, $objList);# or return FALSE;
+             fetchData($_[0], $siteObj->{'name'}, $givenObjType, $objList) or logMessage("[!] No data fetched from site '$siteObj->{'name'}', stop", DEBUG_MID), return FALSE;
              # Add its info to LLD-response 
 #             logMessage("[.]\t\t Objects list:\n\t".(Dumper $objList), DEBUG_MID);
              addToLLD($_[0], $siteObj, $objList, $lldPiece) if ($objList);
           } 
        } 
     } 
-    
+    defined($lldPiece) or logMessage("[!] No data found for object $givenObjType (may be wrong site name), stop", DEBUG_MID), return FALSE;
     # link LLD to {'data'} key
-    $_[1]->{'data'} = $lldPiece;
+    undef($_[1]),
+     $_[1]->{'data'} = $lldPiece,
     # make JSON
     $_[1]=$_[0]->{'jsonxs'}->encode($_[1]);
 #    logMessage("[<]\t Generated LLD:\n\t".(Dumper $_[1]), DEBUG_HIGH);
@@ -771,17 +804,23 @@ sub addToLLD {
     # $o - outgoing object's array element pointer, init as length of that array to append elements to the end
     my $o = defined($_[3]) ? @{$_[3]} : 0;
     for (my $i=0; $i < @{$_[2]}; $i++, $o++) {
-      $_[3][$o]->{'{#NAME}'}     = $_[2][$i]->{'name'} if ($_[2][$i]->{'name'});
-      $_[3][$o]->{'{#ID}'}       = $_[2][$i]->{'_id'} if ($_[2][$i]->{'_id'});
+     
+      $_[3][$o]->{'{#NAME}'}     = $_[2][$i]->{'name'}      if ($_[2][$i]->{'name'});
+      $_[3][$o]->{'{#ID}'}       = $_[2][$i]->{'_id'}       if ($_[2][$i]->{'_id'});
       # $_[1] is undefined if script uses with v2 controller or generate LLD for OBJ_SITE  
-      # ...but undef transform to {} - why? Test length of hash...
-      $_[3][$o]->{'{#SITENAME}'} = $_[1]->{'name'} if (%{$_[1]});
-      $_[3][$o]->{'{#SITEID}'}   = $_[1]->{'_id'} if (%{$_[1]});
-      $_[3][$o]->{'{#IP}'}       = $_[2][$i]->{'ip'}  if ($_[2][$i]->{'ip'});
-      $_[3][$o]->{'{#MAC}'}      = $_[2][$i]->{'mac'} if ($_[2][$i]->{'mac'});
+      # ...but undef transform to {} - why? Need to est length of hash...
+      $_[3][$o]->{'{#SITEID}'}   = $_[1]->{'_id'}           if (%{$_[1]});
+      $_[3][$o]->{'{#SITENAME}'} = $_[1]->{'name'}          if (%{$_[1]});
+      # v3 have not 'desc' key, but (%{$_[1]} > 0)
+      $_[3][$o]->{'{#SITEDESC}'} = $_[1]->{'desc'}          if ($_[1]->{'desc'});
+      # 
+      $_[3][$o]->{'{#IP}'}       = $_[2][$i]->{'ip'}        if ($_[2][$i]->{'ip'});
+      $_[3][$o]->{'{#MAC}'}      = $_[2][$i]->{'mac'}       if ($_[2][$i]->{'mac'});
       # state of object: 0 - off, 1 - on
-      $_[3][$o]->{'{#STATE}'}    = "$_[2][$i]->{'state'}" if ($_[2][$i]->{'state'});
+      $_[3][$o]->{'{#STATE}'}    = "$_[2][$i]->{'state'}"   if ($_[2][$i]->{'state'});
+      $_[3][$o]->{'{#ADOPTED}'}  = "$_[2][$i]->{'adopted'}" if ($_[2][$i]->{'adopted'});
 
+      # Object specific macro appending
       if ($givenObjType eq OBJ_HEALTH) {
          $_[3][$o]->{'{#SUBSYSTEM}'}= $_[2][$i]->{'subsystem'};
       } elsif ($givenObjType eq OBJ_WLAN) {
@@ -795,6 +834,7 @@ sub addToLLD {
          $_[3][$o]->{'{#ID}'}     = $_[2][$i]->{'device_id'};
       } elsif ($givenObjType eq OBJ_SITE) {
          # 0+ - convert 'true'/'false' to 1/0 
+         # skip hidden 'super' site
          next if (exists($_[2][$i]->{'attr_hidden'}) && (0+$_[2][$i]->{'attr_hidden'}));
          $_[3][$o]->{'{#DESC}'}     = $_[2][$i]->{'desc'};
       } elsif ($givenObjType eq OBJ_USW_PORT) {
@@ -803,13 +843,14 @@ sub addToLLD {
          $_[3][$o]->{'{#UP}'}     = "$_[2][$i]->{'up'}";
 #      } elsif ($givenObjType eq OBJ_UAP) {
 #         ;
+
 #      } elsif ($givenObjType eq OBJ_USG || $givenObjType eq OBJ_USW) {
 #        ;
       }
     }
 
 #    logMessage("[<]\t Generated LLD piece:\n\t".(Dumper $_[3]), DEBUG_HIGH);
-    logMessage("\n[-] addToLLD() finished", DEBUG_LOW);
+    logMessage("[-] addToLLD() finished", DEBUG_LOW);
     return TRUE;
 }
 
@@ -824,9 +865,10 @@ sub addToLLD {
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 sub readConf {
     $globalConfig=undef;
-    open(my $fh, $configFile) || die "\nCan't open config file: '$configFile'";
+    open(my $fh, $configFile) or die "[!] Can't open config file: '$configFile'\n";
     # Read default values for global scope from config file
     while(my $line=<$fh>){
+         # skip comments
          $line =~ /^($|#)/ && next;
          chomp($line);
          # 'key =    value' => 'key' & 'value'
@@ -834,6 +876,11 @@ sub readConf {
          $globalConfig->{lc($key)} = $val;
     }
     close($fh);
+
+   $globalConfig->{'cachedir'}     = '/dev/shm' unless (defined($globalConfig->{'cachedir'}));
+
+   (-e $globalConfig->{'cachedir'}) or die "[!] Cache dir not found: '$globalConfig->{'cachedir'}'\n";
+   (-d $globalConfig->{'cachedir'}) or die "[!] Cache dir not dir: '$globalConfig->{'cachedir'}'\n";
 
    $globalConfig->{'listenip'}             = SERVER_DEFAULT_IP unless (defined($globalConfig->{'listenip'}));
    $globalConfig->{'listenport'}           = SERVER_DEFAULT_PORT unless (defined($globalConfig->{'listenport'}));
@@ -844,7 +891,8 @@ sub readConf {
    $globalConfig->{'action'}  	    = ACT_DISCOVERY unless (defined($globalConfig->{'action'}));
    $globalConfig->{'objecttype'}    = OBJ_WLAN unless (defined($globalConfig->{'objecttype'}));
 
-   $globalConfig->{'cacheroot'}     = '/dev/shm' unless (defined($globalConfig->{'cacheroot'}));
+
+#   $globalConfig->{'cachemaxage'}   = ($globalConfig->{'cachemaxage'} ||  63;
    $globalConfig->{'cachemaxage'}   = 60 unless (defined($globalConfig->{'cachemaxage'}));
    $globalConfig->{'unifilocation'} = '127.0.0.1:8443' unless (defined($globalConfig->{'unifilocation'}));
    $globalConfig->{'unifiversion'}  = CONTROLLER_VERSION_4 unless (defined($globalConfig->{'unifiversion'}));
@@ -852,6 +900,7 @@ sub readConf {
    $globalConfig->{'unifipass'}     = 'ubnt' unless (defined($globalConfig->{'unifipass'}));
    $globalConfig->{'debuglevel'}    = FALSE unless (defined($globalConfig->{'debuglevel'}));
    $globalConfig->{'sitename'}      = 'default' unless (defined($globalConfig->{'sitename'}));
+   $globalConfig->{'nullchar'}      = '' unless (defined($globalConfig->{'nullchar'}));
 
    # cast literal to digital
    $globalConfig->{'cachemaxage'} += 0, $globalConfig->{'debuglevel'} += 0; $globalConfig->{'listenport'} +=0;
