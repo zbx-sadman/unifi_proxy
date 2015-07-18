@@ -9,7 +9,7 @@
 static char	ZBX_MODULE_NAME[] 		  =  "unifi.so";
 static char	DEFAULT_UNIFI_PROXY_SERVER[]      =  "localhost";
 static char	DEFAULT_UNIFI_PROXY_CONFIG_FILE[] =  "unifi.conf";
-static int	DEFAULT_UNIFI_PROXY_PORT	  =  7777;
+static int	DEFAULT_UNIFI_PROXY_PORT	  =  8448;
 
 extern char 	*CONFIG_LOAD_MODULE_PATH;
 
