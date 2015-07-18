@@ -11,12 +11,8 @@ use Data::Dumper;
 use JSON::XS ();
 use LWP ();
 use POSIX;
-#use POSIX ":sys_wait_h";
 use IO::Socket;
-#use IO::Handle;
-#use Symbol;
 use IO::Socket::SSL ();
-#use PerlIO;
 
 use constant {
      ACT_COUNT => 'count',
@@ -25,8 +21,7 @@ use constant {
      ACT_DISCOVERY => 'discovery',
      BY_CMD => 1,
      BY_GET => 2,
-#     CONFIG_FILE_DEFAULT => '/etc/unifi_proxy/unifi_proxy.conf',
-     CONFIG_FILE_DEFAULT => './unifi_proxy.conf',
+     CONFIG_FILE_DEFAULT => '/etc/unifi_proxy/unifi_proxy.conf',
      CONTROLLER_VERSION_2 => 'v2',
      CONTROLLER_VERSION_3 => 'v3',
      CONTROLLER_VERSION_4 => 'v4',
@@ -47,6 +42,7 @@ use constant {
 #     OBJ_SYSINFO => 'sysinfo',
      TOOL_NAME => 'UniFi Proxy',
      TOOL_VERSION => '1.0.0',
+#     TOOL_UA => 'UniFi Proxy 1.0.0',
      TOOL_HOMEPAGE => 'https://github.com/zbx-sadman/unifi_proxy',
      SERVER_DEFAULT_IP => '127.0.0.1',
      SERVER_DEFAULT_PORT => 8448,
@@ -57,6 +53,10 @@ use constant {
      FALSE => 0,
      MAX_BUFFER_LEN => 65536,
      MAX_REQUEST_LEN => 256,
+     FETCH_NO_ERROR => 0,
+     FETCH_OTHER_ERROR => 1,
+     FETCH_LOGIN_ERROR => 2,
+
 };
 
 IO::Socket::SSL::set_default_context(new IO::Socket::SSL::SSL_Context(SSL_version => 'tlsv1', SSL_verify_mode => 0));
@@ -175,22 +175,11 @@ sub handleCHLDSignal {
     while ( 0 < ($pid = waitpid(-1, WNOHANG))) {
           delete $servers->{$pid};
           $servers_num --;
-#         if ($pid == -1) {
-            # no child waiting.  Ignore it.
-#         } elsif (WIFEXITED($?)) {
-#           print "Process $pid exited.\n";
-#         } else {
-#           print "False alarm on $pid.\n";
-#         }
     }
     $SIG{CHLD} = \&handleCHLDSignal;
 }
 
 sub handleHUPSignal {
-#    print "\n [HUP] kill servers", print Dumper keys $servers;
-#    local($SIG{CHLD}) = 'IGNORE';   # we're going to kill our children
-#    kill 'INT' => keys $servers;
-#    print "\n ReadConf";
     readConf;
 }
 
@@ -203,7 +192,7 @@ sub handleHUPSignal {
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 sub handleINTSignal {
     local($SIG{CHLD}) = 'IGNORE';   # we're going to kill our children
-    kill 'INT' => keys $servers;
+    kill 'INT' => keys %{$servers};
     exit;                           # clean up with dignity
 }
 
@@ -551,7 +540,7 @@ sub fetchData {
    # If CacheMaxAge = 0 - do not try to read/update cache - fetch data from controller
    if (0 == $_[0]->{'cachemaxage'}) {
       logMessage("[.]\t\t No read/update cache because CacheMaxAge = 0", DEBUG_MID);
-      fetchDataFromController($_[0], $objPath, $jsonData);
+      fetchDataFromController($_[0], $objPath, $jsonData) or logMessage("[!] Can't fetch data from controller, stop", DEBUG_LOW), return FALSE;
    } else {
       # Change all [:/.] to _ to make correct filename
       ($cacheFileName = $objPath) =~ tr/\/\:\./_/, 
@@ -582,7 +571,7 @@ sub fetchData {
                # if Proxy could lock temporary file, it...
                chmod (0666, $fh);
                # ...fetch new data from controller...
-               fetchDataFromController($_[0], $objPath, $jsonData);
+               fetchDataFromController($_[0], $objPath, $jsonData) or logMessage("[!] Can't fetch data from controller, stop", DEBUG_LOW), close ($fh), return FALSE;
                # unbuffered write it to temp file..
                syswrite ($fh, $_[0]->{'jsonxs'}->encode($jsonData));
                # Now unlink old cache filedata from cache filename 
@@ -650,64 +639,64 @@ sub fetchDataFromController {
    # $_[0] - GlobalConfig
    # $_[1] - object path
    # $_[2] - jsonData object ref
-   my $response, my $fetchType=$_[0]->{'fetch_rules'}->{$_[0]->{'objecttype'}}->{'method'}, 
-   my $fetchCmd=$_[0]->{'fetch_rules'}->{$_[0]->{'objecttype'}}->{'cmd'};
+   my $response, my $fetchType=$_[0]->{'fetch_rules'}->{$_[0]->{'objecttype'}}->{'method'},
+   my $fetchCmd=$_[0]->{'fetch_rules'}->{$_[0]->{'objecttype'}}->{'cmd'}, my $errorCode;
 
    logMessage("[+] fetchDataFromController() started", DEBUG_LOW);
    logMessage("[>]\t args: object path: '$_[1]'", DEBUG_LOW);
 
    # HTTP UserAgent init
    # Set SSL_verify_mode=off to login without certificate manipulation
-   $_[0]->{'ua'} = LWP::UserAgent-> new(cookie_jar => {}, agent => TOOL_NAME."/".TOOL_VERSION." (perl engine)",
-                                        ssl_opts => {SSL_verify_mode => 0, verify_hostname => 0}) unless ($_[0]->{'ua'});
-
+   $_[0]->{'ua'} = LWP::UserAgent-> new('cookie_jar' => {}, 'agent' => TOOL_NAME."/".TOOL_VERSION." (perl engine)",
+                                        'timeout' => 60, 'ssl_opts' => {'verify_hostname' => 0}) unless ($_[0]->{'ua'});
    ################################################## Logging in  ##################################################
-   # how to check 'still logged' state?
-   unless ($_[0]->{'logged_in'}) {
-     logMessage("[.]\t\t Try to log in into controller...", DEBUG_LOW);
-     $response=$_[0]->{'ua'}->post($_[0]->{'login_path'}, 'Content_type' => "application/$_[0]->{'login_type'}", 'Content' => $_[0]->{'login_data'});
-#     logMessage("[>>]\t\t HTTP respose:\n\t".(Dumper $response), DEBUG_HIGH);
-     my $rc=$response->code;
-     if ($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_4) {
-        # v4 return 'Bad request' (code 400) on wrong auth
-        die "\n[!] Login error: code $rc, stop." if ($rc eq '400');
-        # v4 return 'OK' (code 200) on success login and must die only if get error
-        die "\n[!] Other HTTP error: $rc, stop." if ($response->is_error);
-     } elsif (($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_3) || ($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_2)) {
-        # v3 return 'OK' (code 200) on wrong auth
-        die "\n[!] Login error: $rc, stop." if ($response->is_success );
-        # v3 return 'Redirect' (code 302) on success login and must die only if code<>302
-        die "\n[!] Other HTTP error: $rc, stop." if ($rc ne '302');
-#     } else {
-#        # v2 code
-#        ;
-       }
-     logMessage("Login successfully", DEBUG_LOW);
-     $_[0]->{'logged_in'} = TRUE; 
-  }
+   # Check to 'still logged' state
+   $response=$_[0]->{'ua'}->get("$_[0]->{'api_path'}/self");
+   # FETCH_OTHER_ERROR = is_error == TRUE (1), FETCH_NO_ERROR = is_error == FALSE (0)
+   # FETCH_OTHER_ERROR stop work if get() haven't success && no error 401 (login required). For example - error 500 (connect refused)
+   $errorCode=$response->is_error;
+   # not logged?
+   if ($response->code eq '401') {
+        # logging in
+        logMessage("[.]\t\tTry to log in into controller...", DEBUG_LOW);
+        $response=$_[0]->{'ua'}->post($_[0]->{'login_path'}, 'Content_type' => "application/$_[0]->{'login_type'}",'Content' => $_[0]->{'login_data'});
+  #     logMessage("[>>]\t\t HTTP respose:\n\t".(Dumper $response), DEBUG_HIGH);
+        my $rc=$response->code;
+        $errorCode=$response->is_error;
+        if ($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_4) {
+           # v4 return 'Bad request' (code 400) on wrong auth
+           # v4 return 'OK' (code 200) on success login
+           ($rc eq '400') and $errorCode=FETCH_LOGIN_ERROR;
+        } elsif (($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_3) || ($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_2)) {
+           # v3 return 'OK' (code 200) on wrong auth
+           ($rc eq '200') and $errorCode=FETCH_LOGIN_ERROR;
+           # v3 return 'Redirect' (code 302) on success login and must die only if code<>302
+           ($rc eq '302') and $errorCode=FETCH_NO_ERROR;
+        }
+    }
+    ($errorCode == FETCH_LOGIN_ERROR) and logMessage("[!] Login error - wrong auth data, stop", DEBUG_LOW), return FALSE;
+    ($errorCode == FETCH_OTHER_ERROR) and logMessage("[!] Comminication error: '".($response->status_line)."', stop.\n", DEBUG_LOW), return FALSE;
 
+    logMessage("[.]\t\tLogin successfull", DEBUG_LOW);
 
    ################################################## Fetch data from controller  ##################################################
 
    if (BY_CMD == $fetchType) {
       logMessage("[.]\t\t Fetch data with CMD method: '$fetchCmd'", DEBUG_MID);
       $response=$_[0]->{'ua'}->post($_[1], 'Content_type' => 'application/json', 'Content' => $fetchCmd);
-
    } elsif (BY_GET == $fetchType) {
       logMessage("[.]\t\t Fetch data with GET method from: '$_[1]'", DEBUG_MID);
       $response=$_[0]->{'ua'}->get($_[1]);
    }
 
-   die "\n[!] JSON taking error, HTTP code: ", $response->status_line unless ($response->is_success), ", stop.";
-#   logMessage("[>>]\t Fetched data:\n\t".(Dumper $response->decoded_content), DEBUG_HIGH);
+   ($response->is_error == FETCH_OTHER_ERROR) and logMessage("[!] Comminication error while fetch data from controller: '".($response->status_line)."', stop.\n", DEBUG_LOW), return FALSE;
+
+   # logMessage("[>>]\t\t Fetched data:\n\t".(Dumper $response->decoded_content), DEBUG_HIGH);
    $_[2]=$_[0]->{'jsonxs'}->decode($response->decoded_content);
-   my $jsonMeta=$_[2]->{'meta'}->{'rc'};
    # server answer is ok ?
-   die "[!] getJSON error: rc=$jsonMeta, stop." if ($jsonMeta ne 'ok'); 
+   (($_[2]->{'meta'}->{'rc'} ne 'ok') && (defined($_[2]->{'meta'}->{'msg'}))) and  logMessage("[!] UniFi controller reply is not OK: '$_[2]->{'meta'}->{'msg'}', stop.", DEBUG_LOW);
    $_[2]=$_[2]->{'data'};
 #   logMessage("[<]\t decoded data:\n\t".(Dumper $_[2]), DEBUG_HIGH);
-
-   logMessage("[-] fetchDataFromController() finished", DEBUG_LOW);
    $_[0]->{'downloaded'}=TRUE;
    return TRUE;
 }
