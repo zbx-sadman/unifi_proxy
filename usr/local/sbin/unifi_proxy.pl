@@ -660,7 +660,7 @@ sub fetchDataFromController {
         # logging in
         logMessage("[.]\t\tTry to log in into controller...", DEBUG_LOW);
         $response=$_[0]->{'ua'}->post($_[0]->{'login_path'}, 'Content_type' => "application/$_[0]->{'login_type'}",'Content' => $_[0]->{'login_data'});
-  #     logMessage("[>>]\t\t HTTP respose:\n\t".(Dumper $response), DEBUG_HIGH);
+#        logMessage("[>>]\t\t HTTP respose:\n\t".(Dumper $response), DEBUG_HIGH);
         my $rc=$response->code;
         $errorCode=$response->is_error;
         if ($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_4) {
@@ -750,7 +750,7 @@ sub makeLLD {
        # User want to get LLD with objects for all or one sites
           foreach my $siteObj (@{$siteList}) {
              # skip hidden site 'super', 0+ convert literal true/false to decimal
-             next if (exists($siteObj->{'attr_hidden'}) && (0+$siteObj->{'attr_hidden'}));
+             next if (defined($siteObj->{'attr_hidden'}));
              # skip site, if '-s' option used and current site other, that given
              next if ($_[0]->{'sitename_given'} && ($_[0]->{'sitename'} ne $siteObj->{'name'}));
              logMessage("[.]\t\t Handle site: '$siteObj->{'name'}'", DEBUG_MID);
@@ -794,6 +794,7 @@ sub addToLLD {
     # $o - outgoing object's array element pointer, init as length of that array to append elements to the end
     my $o = defined($_[3]) ? @{$_[3]} : 0;
     for (my $i=0; $i < @{$_[2]}; $i++, $o++) {
+      next if (defined($_[2][$i]->{'attr_hidden'}));
      
       $_[3][$o]->{'{#NAME}'}     = $_[2][$i]->{'name'}      if ($_[2][$i]->{'name'});
       $_[3][$o]->{'{#ID}'}       = $_[2][$i]->{'_id'}       if ($_[2][$i]->{'_id'});
@@ -900,13 +901,14 @@ sub readConf {
    $globalConfig->{'default_sitename'} = 'default';
 
     $globalConfig->{'api_path'}      = "$globalConfig->{'unifilocation'}/api";
-    $globalConfig->{'login_path'}    = "$globalConfig->{'unifilocation'}/api/login";
+    $globalConfig->{'login_path'}    = "$globalConfig->{'unifilocation'}/login";
     $globalConfig->{'logout_path'}   = "$globalConfig->{'unifilocation'}/logout";
     $globalConfig->{'login_data'}    = "username=$globalConfig->{'unifiuser'}&password=$globalConfig->{'unifipass'}&login=login";
     $globalConfig->{'login_type'}    = 'x-www-form-urlencoded';
 
     # Set controller version specific data
     if ($globalConfig->{'unifiversion'} eq CONTROLLER_VERSION_4) {
+    $globalConfig->{'login_path'}    = "$globalConfig->{'unifilocation'}/api/login";
        $globalConfig->{'login_data'} = "{\"username\":\"$globalConfig->{'unifiuser'}\",\"password\":\"$globalConfig->{'unifipass'}\"}",
        $globalConfig->{'login_type'} = 'json',
        # Data fetch rules.
