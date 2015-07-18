@@ -1,9 +1,15 @@
 ## UniFi Proxy
-Actual release is NONE: no releases, testing stage in progress. Brave explorers can try  [unifi_proxy.pl](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/master/usr/local/sbin/unifi_proxy.pl) with [unifi_proxy.conf](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/master/etc/unifi_proxy/unifi_proxy.conf)
+Actual release is NONE: no releases, testing stage in progress. Brave explorers and DYI-ers can try  [unifi_proxy.pl](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/master/usr/local/sbin/unifi_proxy.pl) with [unifi_proxy.conf](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/master/etc/unifi_proxy/unifi_proxy.conf) or walk to _/etc_ , _/usr/local_ and _/src_ dirs and get that what they need:
+
+- [etc/init.d/unifi_proxy](https://github.com/zbx-sadman/unifi_proxy/blob/master/etc/init.d/unifi_proxy) - system start-up service script
+- [unifi_proxy_get.c](https://github.com/zbx-sadman/unifi_proxy/blob/master/src/unifi_proxy_get.c) - _unifi_proxy_get_ utility source code
+- [etc/zabbix/zbx_unifi.conf](https://github.com/zbx-sadman/unifi_proxy/blob/master/etc/zabbix/zbx_unifi.conf) - plugged to _zabbix_agentd.conf_ config file.
+- [unifi.c](https://github.com/zbx-sadman/unifi_proxy/tree/master/src/zbx_unifi) - _unifi.so_ Zabbix loadable module source code
+- [unifi.conf](https://github.com/zbx-sadman/unifi_proxy/blob/master/usr/local/lib/zabbix/unifi.conf) - config file for _unifi.so_
 
 Command-line version of UniFi Proxy is [UniFi Miner](https://github.com/zbx-sadman/unifi_miner)
 
-It is a TCP server written in Perl, which helps deliver to the monitoring system (Zabbix) operational data - metrics and settings obtained from the UniFi controller via API, provided by Ubiquiti. Zabbix's Low-level Discovery (LLD) protocol are supported.
+It is a TCP server written in Perl, which helps deliver to the monitoring system (Zabbix or other, that used shell's utility to taken data - like Cacti) operational data - metrics and settings obtained from the UniFi controller via API, provided by Ubiquiti. Zabbix's Low-level Discovery (LLD) protocol are supported.
 
 ![Zabbix: connected clients](http://community.ubnt.com/t5/image/serverpage/image-id/53219iB1CA79D24EFB2BEB/image-size/original)
 
@@ -15,9 +21,9 @@ Templates for Zabbix [here](https://github.com/zbx-sadman/unifi_proxy/tree/maste
 
 Response time compare table (6 UAPs installation):
 
-| Miner 1.0.0 (без PPerl) | Miner 1.0.0 (PPerl) | Proxy (netcat) | Proxy (unifi_proxy_get) | Proxy (unifi.so) |
-|-------------------------|---------------------|----------------|-------------------------|------------------|
-| ~0m0.056s               | ~0m0.023s           | ~0m0.011s      |  ~0m0.009s              |  ~0m0.007s       |
+| Miner 1.0.0 (w/o PPerl) | Miner 1.0.0 (w/PPerl) | Proxy (netcat) | Proxy (unifi_proxy_get) | Proxy (unifi.so) |
+|-------------------------|-----------------------|----------------|-------------------------|------------------|
+| ~0m0.056s               | ~0m0.023s             | ~0m0.005s      |  ~0m0.003s              |  ~0m0.006s       |
 
 ### My other projects
  [_UniFi Miner_](https://github.com/zbx-sadman/unifi_miner) - Command-line version of UniFi Proxy   
