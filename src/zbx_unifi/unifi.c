@@ -110,7 +110,7 @@ int	zbx_module_unifi_proxy(AGENT_REQUEST *request, AGENT_RESULT *result)
 
         // Connect to UniFi Proxy
         // item_timeout or (item_timeout-1) ?
-        if (SUCCEED == (ret = zbx_tcp_connect(&s, CONFIG_SOURCE_IP, UNIFI_PROXY_SERVER, UNIFI_PROXY_PORT, item_timeout-1)))
+        if (SUCCEED == (ret = zbx_tcp_connect(&s, CONFIG_SOURCE_IP, UNIFI_PROXY_SERVER, UNIFI_PROXY_PORT, CONFIG_TIMEOUT)))
         {
             // Send request
             if (SUCCEED == (ret = zbx_tcp_send_raw(&s, send_buf)))

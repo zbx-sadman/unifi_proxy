@@ -7,7 +7,7 @@ int main(int argc , char *argv[])
 {
     int sock;
     struct sockaddr_in server;
-    char message[255] , server_reply[65536];
+    char message[256] , server_reply[65536];
      
     if (4 != argc)
       {
@@ -45,7 +45,7 @@ int main(int argc , char *argv[])
     }
          
     //Receive a reply from the server
-    if( recv(sock , server_reply , 2000 , 0) < 0)
+    if( recv(sock , server_reply , 65536, 0) < 0)
     {
         puts("recv failed");
         return 1;
