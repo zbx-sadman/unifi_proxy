@@ -49,7 +49,7 @@ use constant {
      TOOL_VERSION => '1.0.0',
      TOOL_HOMEPAGE => 'https://github.com/zbx-sadman/unifi_proxy',
      SERVER_DEFAULT_IP => '127.0.0.1',
-     SERVER_DEFAULT_PORT => 7777,
+     SERVER_DEFAULT_PORT => 8448,
      SERVER_DEFAULT_MAXCLIENTS => 10,
      SERVER_DEFAULT_STARTSERVERS => 3,
      SERVER_DEFAULT_MAXREQUESTSPERCHILD => 1024,
