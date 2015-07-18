@@ -882,8 +882,6 @@ sub readConf {
    $globalConfig->{'action'}  	    = ACT_DISCOVERY unless (defined($globalConfig->{'action'}));
    $globalConfig->{'objecttype'}    = OBJ_WLAN unless (defined($globalConfig->{'objecttype'}));
 
-
-#   $globalConfig->{'cachemaxage'}   = ($globalConfig->{'cachemaxage'} ||  63;
    $globalConfig->{'cachemaxage'}   = 60 unless (defined($globalConfig->{'cachemaxage'}));
    $globalConfig->{'unifilocation'} = '127.0.0.1:8443' unless (defined($globalConfig->{'unifilocation'}));
    $globalConfig->{'unifiversion'}  = CONTROLLER_VERSION_4 unless (defined($globalConfig->{'unifiversion'}));
