@@ -27,6 +27,8 @@ Response time compare table (6 UAPs installation):
 |-------------------------|-----------------------|----------------|-------------------------|------------------|
 | ~0m0.056s               | ~0m0.023s             | ~0m0.005s      |  ~0m0.003s              |  ~0m0.006s       |
 
+Note: time in measurement "Proxy (unifi.so)" include start & runtime overhead of _zabbix_agentd_/_zabbix_get_. Streaming speed of queries processed by server was ~1000resp/sec (using special written utility)
+
 ### My other projects
  [_UniFi Miner_](https://github.com/zbx-sadman/unifi_miner) - Command-line version of UniFi Proxy   
  [_Zabbuino_](https://github.com/zbx-sadman/zabbuino) - Zabbix agent for Arduino 
