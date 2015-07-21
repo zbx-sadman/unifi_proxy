@@ -117,7 +117,6 @@ my $servers_num    = 0;
 
 # Read config
 readConf;
-print Dumper $globalConfig;
 # Bind to addr:port
 my $server = IO::Socket::INET->new(LocalAddr => $globalConfig->{'listenip'}, 
                                    LocalPort => $globalConfig->{'listenport'}, 
@@ -353,8 +352,7 @@ sub handleConnection {
   }
 
   # Logout need if logging in before (in fetchData() sub) completed
-  logMessage("[*] Logout from UniFi controller", DEBUG_LOW);
-   $gC->{'ua'}->get($gC->{'logout_path'});
+  logMessage("[*] Logout from UniFi controller", DEBUG_LOW), $gC->{'ua'}->get($gC->{'logout_path'}) if (defined($gC->{'ua'}));
   return TRUE;
 }
     
