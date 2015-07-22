@@ -15,13 +15,14 @@ use IO::Socket;
 use IO::Socket::SSL ();
 
 use constant {
-     CONFIG_FILE_DEFAULT => '/etc/unifi_proxy/unifi_proxy.conf',
-#     CONFIG_FILE_DEFAULT => './unifi_proxy.conf',
+#     CONFIG_FILE_DEFAULT => '/etc/unifi_proxy/unifi_proxy.conf',
+     CONFIG_FILE_DEFAULT => './unifi_proxy.conf',
      TOOL_HOMEPAGE => 'https://github.com/zbx-sadman/unifi_proxy',
      TOOL_NAME => 'UniFi Proxy',
      TOOL_VERSION => '1.0.0',
 #     TOOL_UA => 'UniFi Proxy 1.0.0',
 
+     ACT_PERCENT => 'percent',
      ACT_COUNT => 'count',
      ACT_SUM => 'sum',
      ACT_GET => 'get',
@@ -30,7 +31,8 @@ use constant {
      CONTROLLER_VERSION_3 => 'v3',
      CONTROLLER_VERSION_4 => 'v4',
      OBJ_USW => 'usw',
-     OBJ_USW_PORT => 'usw_port',
+     OBJ_USW_PORT_TABLE => 'usw_port_table',
+     OBJ_UAP_VAP_TABLE => 'uap_vap_table',
      OBJ_UPH => 'uph',
      OBJ_UAP => 'uap',
      OBJ_USG => 'usg',
@@ -149,7 +151,7 @@ exit;
 sub logMessage
   {
     return unless ($globalConfig->{'debuglevel'} >= $_[1]);
-    print "[$$] ", time, " $_[0]\n";
+    print "[$$] ", strftime("%Y-%m-%d %H:%M:%S", localtime(time())), " $_[0]\n";
   }
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 #
@@ -226,7 +228,7 @@ sub makeServer {
 
         # init service keys
         # Level of dive (recursive call) for getMetric subroutine
-        $serverConfig->{'dive_level'} = 1;
+        $serverConfig->{'dive_level'} = 0;
         # Max level to which getMetric is dived
         $serverConfig->{'max_depth'} = 0;
         # Data is downloaded instead readed from file
@@ -319,6 +321,7 @@ sub handleConnection {
           # Call sub for made LLD-like JSON
           logMessage("[*] LLD requested", DEBUG_LOW);
           makeLLD($gC, $buffer);
+#          fetchData($gC, $gC->{'sitename'}, $gC->{'objecttype'}, $gC->{'id'}, \@objJSON);
           next;
        }
 
@@ -328,7 +331,7 @@ sub handleConnection {
           # If not - calculate $globalConfig->{'action'} for all items in objects list (all object of type = 'object name', for example - all 'uap'
           # load JSON data & get metric
           logMessage("[*] Key given: $gC->{'key'}", DEBUG_LOW);
-          if (! fetchData($gC, $gC->{'sitename'}, $gC->{'objecttype'}, \@objJSON)) {
+          if (! fetchData($gC, $gC->{'sitename'}, $gC->{'objecttype'}, $gC->{'id'}, \@objJSON)) {
              $buffer="[!] FetchData error";
              logMessage($buffer, DEBUG_LOW);
              next;
@@ -371,7 +374,7 @@ sub getMetric {
     $_[0]->{'dive_level'}++;
 
     logMessage("[+] ($_[0]->{'dive_level'}) getMetric() started", DEBUG_LOW);
-    my $key=$_[2];
+    my $key=$_[2], my $objList;
 
     logMessage("[>]\t args: key: '$_[2]', action: '$_[0]->{'action'}'", DEBUG_LOW);
 #    logMessage("[>]\t incoming object info:'\n\t".(Dumper $_[1]), DEBUG_HIGH);
@@ -382,7 +385,8 @@ sub getMetric {
     # Checking for type of $_[1]. 
     # if $_[1] is array - need to explore any element
     if (ref($_[1]) eq 'ARRAY') {
-       my $paramValue, my $objList=@{$_[1]};
+       my $paramValue;
+       $objList=@{$_[1]};
        logMessage("[.]\t\t Array with $objList objects detected", DEBUG_MID);
 
        # if metric ask "how much items (AP's for example) in all" - just return array size (previously calculated in $objList) and do nothing more
@@ -411,18 +415,21 @@ sub getMetric {
 
                # !!! need to fix trying sum of not numeric values
                # With 'sum' - grow $result
-               if ($_[0]->{'action'} eq ACT_SUM) { 
+               if (ACT_SUM eq $_[0]->{'action'}) { 
                   $_[3]+=$paramValue; 
-               } elsif ($_[0]->{'action'} eq ACT_COUNT) {
+               } elsif (ACT_COUNT eq $_[0]->{'action'} || ACT_PERCENT eq $_[0]->{'action'}) {
                   # may be wrong algo :(
                   # workaround for correct counting with deep diving
                   # With 'count' we must count keys in objects, that placed only on last level
-                  # in other case $result will be incremented by $paramValue (which is number of key in objects inside last level table)
-                  if (($_[0]->{'max_depth'}-$_[0]->{'dive_level'}) < 2 ) {
-                     $_[3]++; 
-                  } else {
+                  # in other case $result will be incremented by $paramValue (which is number of keys inside objects on last level table)
+                  #  
+                  #  **************** NEED AN EXAMPLE OF REQUEST TO REPRODUCE BUG ****************
+                  #
+#                  if (($_[0]->{'max_depth'}-$_[0]->{'dive_level'}) < 2 ) {
+#                     $_[3]++; 
+#                  } else {
                      $_[3]+=$paramValue; 
-                  }
+#                  }
               }
             }
             logMessage("[.]\t\t Value: '$paramValue', result: '$_[3]'", DEBUG_MID) if (defined($paramValue));
@@ -447,6 +454,12 @@ sub getMetric {
 
          # Test filter keys
          if ($fStr) {
+           #
+           # [key_1=val_1&key_2=val_2&key_3=val_3|key_4=val_4]
+           #
+           # need to tokenize $fStr for "&" or "|": ...([&|])(expr)
+           # Then if &expr = TRUE => $filterCount++, if |expr = TRUE $matchCount = $filterCount & last;
+           #
            my @fData=split ('&', $fStr);
            logMessage("\t\t Matching object's keys...", DEBUG_MID);
            # run trought flter list
@@ -479,10 +492,14 @@ sub getMetric {
              # if subkey was detected (tablename is given an exist) - do recursively calling getMetric func with subtable and subkey and get value from it
              logMessage("[.]\t\t It's object. Go inside", DEBUG_MID);
              getMetric($_[0], $_[1]->{$tableName}, $key, $_[3]); 
-          } elsif (defined($_[1]->{$key})) {
+          } elsif (exists($_[1]->{$key})) {
              # Otherwise - just return value for given key
              logMessage("[.]\t\t It's key. Take value... '$_[1]->{$key}'", DEBUG_MID);
-             $_[3]=$_[1]->{$key};
+             if (ACT_COUNT eq $_[0]->{'action'} || ACT_PERCENT eq $_[0]->{'action'}) {
+                $_[3]=1;
+             } else {
+                $_[3]=$_[1]->{$key};
+             }
           } else {
              logMessage("[.]\t\t No key or table exist :(", DEBUG_MID);
           }
@@ -494,6 +511,10 @@ sub getMetric {
 
   #float up...
   $_[0]->{'dive_level'}--;
+
+  # sprintf used for round up to xx.yy
+  $_[3] = sprintf("%.2f", ((0 == $objList) ? 0 : ($_[3]/($objList/100)))) if ((ACT_PERCENT eq $_[0]->{'action'}) && (0 == $_[0]->{'dive_level'}));
+
   return TRUE;
 }
 
@@ -507,17 +528,18 @@ sub fetchData {
    # $_[0] - $GlobalConfig
    # $_[1] - sitename
    # $_[2] - object type
-   # $_[3] - jsonData object ref
+   # $_[3] - obj id
+   # $_[4] - jsonData object ref
    logMessage("[+] fetchData() started", DEBUG_LOW);
    logMessage("[>]\t args: object type: '$_[0]->{'objecttype'}'", DEBUG_MID);
-   logMessage("[>]\t id: '$_[0]->{'id'}'", DEBUG_MID) if ($_[0]->{'id'});
+   logMessage("[>]\t id: '$_[3]'", DEBUG_MID) if ($_[3]);
    logMessage("[>]\t mac: '$_[0]->{'mac'}'", DEBUG_MID) if ($_[0]->{'mac'});
    my ($fh, $jsonData, $objPath),
    my $needReadCache=TRUE;
 
    $objPath  = $_[0]->{'api_path'} . ($_[0]->{'fetch_rules'}->{$_[2]}->{'excl_sitename'} ? '' : "/s/$_[1]") . "/$_[0]->{'fetch_rules'}->{$_[2]}->{'path'}";
-   # if MAC is given with command-line option -  RapidWay for Controller v4 is allowed
-   $objPath.="/$_[0]->{'mac'}" if (($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_4) && $_[0]->{'mac'});
+   # if MAC is given with command-line option -  RapidWay for Controller v4 is allowed, short_way is tested for non-device objects workaround
+   $objPath.="/$_[0]->{'mac'}" if (($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_4) && $_[0]->{'mac'} && $_[0]->{'fetch_rules'}->{$_[2]}->{'short_way'});
    logMessage("[.]\t\t Object path: '$objPath'", DEBUG_MID);
 
    ################################################## Take JSON  ##################################################
@@ -547,9 +569,8 @@ sub fetchData {
          ((-e $tmpCacheFileName) && (!-f $tmpCacheFileName)) and logMessage("[!] Can't handle '$tmpCacheFileName' through its not regular file, stop.", DEBUG_LOW), return FALSE;
          logMessage("[.]\t\t Temporary cache file='$tmpCacheFileName'", DEBUG_MID);
          open ($fh, ">", $tmpCacheFileName) or logMessage("[!] Can't open '$tmpCacheFileName' ($!), stop.", DEBUG_LOW), return FALSE;
-#if (open) {
-            # try to lock temporary cache file and no wait for able locking.
-            # LOCK_EX | LOCK_NB
+         # try to lock temporary cache file and no wait for able locking.
+         # LOCK_EX | LOCK_NB
          if (flock ($fh, 2 | 4)) {
             # if Proxy could lock temporary file, it...
             chmod (0666, $fh);
@@ -572,7 +593,6 @@ sub fetchData {
            $needReadCache=FALSE;
         } 
         close ($fh) or logMessage("[!] Can't close temporary cache file '$tmpCacheFileName' ($!), stop", DEBUG_LOW), return FALSE;
-        #}
       } # if ($cacheExpire)
 
       # if need load data from cache file
@@ -587,23 +607,25 @@ sub fetchData {
   } # if (0 == $_[0]->{'cachemaxage'})
 
   ################################################## JSON processing ##################################################
-  # push() to $_[3] or delete() from $jsonData? If delete() just clean refs - no memory will reserved to new array.
+  # push() to $_[4] or delete() from $jsonData? If delete() just clean refs - no memory will reserved to new array.
   # UBNT Phones store ID into 'device_id' key (?)
   my $idKey = ($_[2] eq OBJ_UPH) ? 'device_id' : '_id'; 
 
   # Walk trought JSON array
   for (my $i=0; $i < @{$jsonData}; $i++) {
      # Object have ID...
-     if ($_[0]->{'id'}) {
+     if ($_[3]) {
        #  ...and its required object? If so push - object to global @objJSON and jump out from the loop.
-       $_[3][0]=@{$jsonData}[$i], last if (@{$jsonData}[$i]->{$idKey} eq $_[0]->{'id'});
+#       print "id: @{$jsonData}[$i]->{$idKey} \n";
+       $_[4][0]=@{$jsonData}[$i], last if (@{$jsonData}[$i]->{$idKey} eq $_[3]);
      } else {
        # otherwise
-       push (@{$_[3]}, @{$jsonData}[$i]) if (!exists(@{$jsonData}[$i]->{'type'}) || (@{$jsonData}[$i]->{'type'} eq $_[2]));
+       push (@{$_[4]}, @{$jsonData}[$i]) if (!exists(@{$jsonData}[$i]->{'type'}) || (@{$jsonData}[$i]->{'type'} eq $_[2]));
      }
    } # for each jsonData
 
-#   logMessage("[<]\t Fetched data:\n\t".(Dumper $_[3]), DEBUG_HIGH);
+#   logMessage("[<]\t Fetched data:\n\t".(Dumper $_[4]), DEBUG_HIGH);
+   
    logMessage("[-] fetchData() finished", DEBUG_LOW);
    return TRUE;
 }
@@ -669,9 +691,12 @@ sub fetchDataFromController {
    }
 
    ($response->is_error == FETCH_OTHER_ERROR) and logMessage("[!] Comminication error while fetch data from controller: '".($response->status_line)."', stop.\n", DEBUG_LOW), return FALSE;
-
+   
    # logMessage("[>>]\t\t Fetched data:\n\t".(Dumper $response->decoded_content), DEBUG_HIGH);
-   $_[2]=$_[0]->{'jsonxs'}->decode($response->decoded_content);
+#   $_[2]=$_[0]->{'jsonxs'}->decode($response->decoded_content);
+   $_[2]=$_[0]->{'jsonxs'}->decode(${$response->content_ref()});
+
+
    # server answer is ok ?
    (($_[2]->{'meta'}->{'rc'} ne 'ok') && (defined($_[2]->{'meta'}->{'msg'}))) and  logMessage("[!] UniFi controller reply is not OK: '$_[2]->{'meta'}->{'msg'}', stop.", DEBUG_LOW);
    $_[2]=$_[2]->{'data'};
@@ -688,61 +713,62 @@ sub fetchDataFromController {
 sub makeLLD {
     # $_[0] - $globalConfig
     # $_[1] - result
-
+    #
+    #  addToLLD() must be called with parentObj (siteObj now);
+    #
+    #
     logMessage("[+] makeLLD() started", DEBUG_LOW);
     logMessage("[>]\t args: object type: '$_[0]->{'objecttype'}'", DEBUG_MID);
     my $jsonObj, my $lldResponse, my $lldPiece; my $siteList=(), my $objList =(),
-    my $givenObjType=$_[0]->{'objecttype'}, my $siteWalking=TRUE;
+    my $givenObjType=$_[0]->{'objecttype'}, my $siteWalking=FALSE, my $siteObj;
 
-    $siteWalking=FALSE if (($givenObjType eq OBJ_USW_PORT) && ($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_4) || ($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_3));
+    $siteWalking=TRUE if (defined($_[0]->{'fetch_rules'}->{&OBJ_SITE}) && (!$_[0]->{'sitename_given'}));
     
     # return right JSON on error or not?
     # $_[1]="{\"data\":[]}";
     $_[1]="{\"data\":error on lld generate}";
 
-    if (! $siteWalking) {
-       # 'no sites walking' routine code here
-       logMessage("[.]\t\t 'No sites walking' routine activated", DEBUG_MID);
-
-       # Take objects
-       # USW Ports LLD workaround: Store USW with given ID to $objList and then rewrite $objList with subtable {'port_table'}. 
-       # Then make LLD for USW_PORT object
-       if ($givenObjType eq OBJ_USW_PORT) {
-          fetchData($_[0], $_[0]->{'sitename'}, OBJ_USW, $objList) or return FALSE;
-          $objList= $objList ? @{$objList}[0]->{'port_table'} : ();
-       } else {
-          fetchData($_[0], $_[0]->{'sitename'}, $givenObjType, $objList) or logMessage("[!] No data fetched from site $_[0]->{'sitename'}', stop", DEBUG_MID), return FALSE;
-       }
-
-#       logMessage("[.]\t\t Objects list:\n\t".(Dumper $objList), DEBUG_HIGH);
-       # Add info to LLD-response 
-       addToLLD($_[0], undef, $objList, $lldPiece) if ($objList) 
+    # if no OBJ_SITE in fetch_rules - it's v2 controller, which not support sites
+    if ($_[0]->{'fetch_rules'}->{&OBJ_SITE}) {
+        # Get site list
+        fetchData($_[0], $_[0]->{'sitename'}, OBJ_SITE, '', $siteList);# or return FALSE;
     } else {
-       # Get site list
-       fetchData($_[0], $_[0]->{'sitename'}, OBJ_SITE, $siteList) or return FALSE;
-#       logMessage("\n[.]\t\t Sites list:\n\t".(Dumper $siteList), DEBUG_MID);
-       
-       # User ask LLD for 'site' object - make LLD piece with site list.
-       if ($givenObjType eq OBJ_SITE) {
-          addToLLD($_[0], undef, $siteList, $lldPiece) if ($siteList);
-       } else {
-       # User want to get LLD with objects for all or one sites
-          foreach my $siteObj (@{$siteList}) {
-             # skip hidden site 'super', 0+ convert literal true/false to decimal
-             next if (defined($siteObj->{'attr_hidden'}));
-             # skip site, if '-s' option used and current site other, that given
-             next if ($_[0]->{'sitename_given'} && ($_[0]->{'sitename'} ne $siteObj->{'name'}));
-             logMessage("[.]\t\t Handle site: '$siteObj->{'name'}'", DEBUG_MID);
-             # Not nulled list causes duplicate LLD items
-             $objList=();
-             # Take objects from foreach'ed site
-             fetchData($_[0], $siteObj->{'name'}, $givenObjType, $objList) or logMessage("[!] No data fetched from site '$siteObj->{'name'}', stop", DEBUG_MID), return FALSE;
-             # Add its info to LLD-response 
-#             logMessage("[.]\t\t Objects list:\n\t".(Dumper $objList), DEBUG_MID);
-             addToLLD($_[0], $siteObj, $objList, $lldPiece) if ($objList);
-          } 
-       } 
-    } 
+        # or made fake site list
+        $siteList=[{'name' => 'default'}];
+    }
+
+    if (OBJ_SITE eq $givenObjType) {
+        addToLLD($_[0], undef, $siteList, $lldPiece) if ($siteList);
+     } else {
+        foreach my $siteObj (@{$siteList}) {
+          my $parentObj={};
+          # skip hidden site 'super', 0+ convert literal true/false to decimal
+          next if (defined($siteObj->{'attr_hidden'}));
+          # skip site, if '-s' option used and current site other, that given
+          next if ($_[0]->{'sitename_given'} && ($_[0]->{'sitename'} ne $siteObj->{'name'}));
+          logMessage("[.]\t\t Handle site: '$siteObj->{'name'}'", DEBUG_MID);
+          # make parent object from siteObj for made right macroses in addToLLD() sub
+          $parentObj={'type' => OBJ_SITE, 'data' => $siteObj};
+          # Not nulled list causes duplicate LLD items
+          $objList=();
+          # Take objects from foreach'ed site
+          fetchData($_[0], $siteObj->{'name'}, $givenObjType, $_[0]->{'id'}, $objList) or logMessage("[!] No data fetched from site '$siteObj->{'name'}', stop", DEBUG_MID), return FALSE;
+          #   print Dumper $_[4];
+          # if JSON contain only one array element with object
+          if (defined($_[0]->{'id'}) && 'ARRAY' eq ref($objList) && 1 == @{$objList}) {
+             # if given key exist inside this object and point to array too...
+             if (exists(@{$objList}[0]->{$_[0]->{'key'}}) && 'ARRAY' eq ref(@{$objList}[0]->{$_[0]->{'key'}})) {
+                # store parent object
+                $parentObj={'type' => $givenObjType, 'data' => @{$objList}[0]};
+                # use this nested array instead object
+                $objList=@{$objList}[0]->{$_[0]->{'key'}};
+             }
+          }
+          # Add its info to LLD-response 
+#          logMessage("[.]\t\t Objects list:\n\t".(Dumper $objList), DEBUG_HIGH);
+          addToLLD($_[0], $parentObj, $objList, $lldPiece) if ($objList);
+        } #foreach
+     }    
     defined($lldPiece) or logMessage("[!] No data found for object $givenObjType (may be wrong site name), stop", DEBUG_MID), return FALSE;
     # link LLD to {'data'} key
     undef($_[1]),
@@ -761,50 +787,76 @@ sub makeLLD {
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 sub addToLLD {
     # $_[0] - $globalConfig
-    # $_[1] - Site object
+    # $_[1] - Parent object
     # $_[2] - Incoming objects list
     # $_[3] - Outgoing objects list
-    my $givenObjType=$_[0]->{'objecttype'};
-    logMessage("[+] addToLLD() started", DEBUG_LOW);    logMessage("[>]\t args: object type: '$_[0]->{'objecttype'}'", DEBUG_MID); 
-    logMessage("[>]\t       site name: '$_[1]->{'name'}'", DEBUG_MID) if ($_[1]->{'name'});
+
+    # remap object type: add key to type for right select and add macroses
+    my $givenObjType  = $_[0]->{'objecttype'}.($_[0]->{'key'} ? "_$_[0]->{'key'}" : '');
+    my $parentObjType = $_[1]->{'type'}, my $parentObjData = $_[1]->{'data'} if (defined($_[1]));
+
+    logMessage("[+] addToLLD() started", DEBUG_LOW); logMessage("[>]\t args: object type: '$_[0]->{'objecttype'}'", DEBUG_MID); 
+#    logMessage("[>]\t       site name: '$_[1]->{'name'}'", DEBUG_MID) if ($_[1]->{'name'});
     # $o - outgoing object's array element pointer, init as length of that array to append elements to the end
     my $o = $_[3] ? @{$_[3]} : 0;
     foreach (@{$_[2]}) {
       # skip hidden 'super' site with OBJ_SITE
       next if ($_->{'attr_hidden'});
-      # $_[1] contain Site data and its is undefined if script uses with v2 controller or eq 0 while generating LLD for OBJ_SITE  
-      if (keys %{$_[1]}) {
-         $_[3][$o]->{'{#SITEID}'}    = $_[1]->{'_id'};
-         $_[3][$o]->{'{#SITENAME}'}  = $_[1]->{'name'};
-         # In v3 'desc' key is not exist, and site desc == name
-         $_[3][$o]->{'{#SITEDESC}'}  = $_[1]->{'desc'} ? $_[1]->{'desc'} : $_[1]->{'name'};
+      # $_[1] contain parent's data and its may be undefined if script uses with v2 controller or while generating LLD for OBJ_SITE  
+      # if defined $_[0]->{'key'})  - discovery for subtable must be maded
+      if (defined($_[1])) {
+         # analyze parent & add some fields
+         if (OBJ_SITE eq $parentObjType) {
+            $_[3][$o]->{'{#SITEID}'}    = "$parentObjData->{'_id'}";
+            $_[3][$o]->{'{#SITENAME}'}  = "$parentObjData->{'name'}";
+            # In v3 'desc' key is not exist, and site desc == name
+            $_[3][$o]->{'{#SITEDESC}'}  = $_[1]->{'desc'} ? "$parentObjData->{'desc'}" : "$parentObjData->{'name'}";
+         } elsif (OBJ_USW eq $parentObjType) {
+            $_[3][$o]->{'{#USWID}'}    = "$parentObjData->{'_id'}";
+            $_[3][$o]->{'{#USWNAME}'}  = "$parentObjData->{'name'}";
+            $_[3][$o]->{'{#USWMAC}'}    = "$parentObjData->{'mac'}";
+         } elsif (OBJ_UAP eq $parentObjType) {
+            $_[3][$o]->{'{#UAPID}'}    = "$parentObjData->{'_id'}";
+            $_[3][$o]->{'{#UAPNAME}'}  = "$parentObjData->{'name'}";
+            $_[3][$o]->{'{#UAPMAC}'}   = "$parentObjData->{'mac'}";
+         }
       }
-      $_[3][$o]->{'{#NAME}'}         = $_->{'name'}      if (exists($_->{'name'}));
-      $_[3][$o]->{'{#ID}'}           = $_->{'_id'}       if (exists($_->{'_id'}));
-      $_[3][$o]->{'{#IP}'}           = $_->{'ip'}        if (exists($_->{'ip'}));
-      $_[3][$o]->{'{#MAC}'}          = $_->{'mac'}       if (exists($_->{'mac'}));
+
+      #  add common fields
+      $_[3][$o]->{'{#NAME}'}         = "$_->{'name'}"     if (exists($_->{'name'}));
+      $_[3][$o]->{'{#ID}'}           = "$_->{'_id'}"      if (exists($_->{'_id'}));
+      $_[3][$o]->{'{#IP}'}           = "$_->{'ip'}"       if (exists($_->{'ip'}));
+      $_[3][$o]->{'{#MAC}'}          = "$_->{'mac'}"      if (exists($_->{'mac'}));
       # state of object: 0 - off, 1 - on
-      $_[3][$o]->{'{#STATE}'}        = "$_->{'state'}"   if (exists($_->{'state'}));
-      $_[3][$o]->{'{#ADOPTED}'}      = "$_->{'adopted'}" if (exists($_->{'adopted'}));
-      # Object specific macro appending
-      if ($givenObjType eq OBJ_WLAN) {
+      $_[3][$o]->{'{#STATE}'}        = "$_->{'state'}"    if (exists($_->{'state'}));
+      $_[3][$o]->{'{#ADOPTED}'}      = "$_->{'adopted'}"  if (exists($_->{'adopted'}));
+
+      # add object specific fields
+      if      (OBJ_WLAN eq $givenObjType ) {
          # is_guest key could be not exist with 'user' network on v3 
          $_[3][$o]->{'{#ISGUEST}'}   = "$_->{'is_guest'}" if (exists($_->{'is_guest'}));
-      } elsif ($givenObjType eq OBJ_USER ) {
+      } elsif (OBJ_USER eq $givenObjType) {
          # sometime {hostname} may be null. UniFi controller replace that hostnames by {'mac'}
-         $_[3][$o]->{'{#NAME}'}      = $_->{'hostname'} ? $_->{'hostname'} : $_->{'mac'};
-      } elsif ($givenObjType eq OBJ_UPH ) {
-         $_[3][$o]->{'{#ID}'}        = $_->{'device_id'};
-      } elsif ($givenObjType eq OBJ_USW_PORT) {
-         $_[3][$o]->{'{#PORTIDX}'}   = "$_->{'port_idx'}";
-         $_[3][$o]->{'{#MEDIA}'}     = $_->{'media'};
-         $_[3][$o]->{'{#UP}'}        = "$_->{'up'}";
-      } elsif ($givenObjType eq OBJ_SITE) {
+         $_[3][$o]->{'{#NAME}'}      = $_->{'hostname'} ? "$_->{'hostname'}" : "$_->{'mac'}";
+      } elsif (OBJ_UPH eq $givenObjType) {
+         $_[3][$o]->{'{#ID}'}        = "$_->{'device_id'}";
+      } elsif (OBJ_SITE eq $givenObjType) {
          # In v3 'desc' key is not exist, and site desc == name
-         $_[3][$o]->{'{#DESC}'} = $_->{'desc'} ? $_->{'desc'} : $_->{'name'};
+         $_[3][$o]->{'{#DESC}'} = $_->{'desc'} ? "$_->{'desc'}" : "$_->{'name'}";
+      } elsif (OBJ_UAP_VAP_TABLE eq $givenObjType) {
+         $_[3][$o]->{'{#UP}'}        = "$_->{'up'}";
+         $_[3][$o]->{'{#USAGE}'}     = "$_->{'usage'}";
+         $_[3][$o]->{'{#RADIO}'}     = "$_->{'radio'}";
+         $_[3][$o]->{'{#ISWEP}'}     = "$_->{'is_wep'}";
+         $_[3][$o]->{'{#ISGUEST}'}   = "$_->{'is_guest'}";
+      } elsif (OBJ_USW_PORT_TABLE eq $givenObjType) {
+         $_[3][$o]->{'{#PORTIDX}'}   = "$_->{'port_idx'}";
+         $_[3][$o]->{'{#MEDIA}'}     = "$_->{'media'}";
+         $_[3][$o]->{'{#UP}'}        = "$_->{'up'}";
+         $_[3][$o]->{'{#PORTPOE}'}   = "$_->{'port_poe'}";
 #      } elsif ($givenObjType eq OBJ_HEALTH) {
 #         $_[3][$o]->{'{#SUBSYSTEM}'} = $_->{'subsystem'};
-#      } elsif ($givenObjType eq OBJ_UAP) {
+#      } elsif (OBJ_UAP eq $givenObjType) {
 #         ;
 #      } elsif ($givenObjType eq OBJ_USG || $givenObjType eq OBJ_USW) {
 #        ;
@@ -898,11 +950,11 @@ my   $configDefs = {
        # `&` let use value of constant, otherwise we have 'OBJ_UAP' => {...} instead 'uap' => {...}
        #     &OBJ_HEALTH => {'method' => BY_GET, 'path' => 'stat/health'},
           &OBJ_SITE     => {'method' => BY_GET, 'path' => 'self/sites', 'excl_sitename' => TRUE},
-          &OBJ_UAP      => {'method' => BY_GET, 'path' => 'stat/device'},
-          &OBJ_UPH      => {'method' => BY_GET, 'path' => 'stat/device'},
-          &OBJ_USG      => {'method' => BY_GET, 'path' => 'stat/device'},
-          &OBJ_USW      => {'method' => BY_GET, 'path' => 'stat/device'},
-          &OBJ_USW_PORT => {'method' => BY_GET, 'path' => 'stat/device'},
+          &OBJ_UAP      => {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
+          &OBJ_UPH      => {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
+          &OBJ_USG      => {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
+          &OBJ_USW      => {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
+#          &OBJ_USW_PORT => {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
           &OBJ_USER     => {'method' => BY_GET, 'path' => 'stat/sta'},
           &OBJ_WLAN     => {'method' => BY_GET, 'path' => 'list/wlanconf'}
        };
