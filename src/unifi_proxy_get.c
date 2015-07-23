@@ -2,12 +2,15 @@
 #include<string.h>    //strlen
 #include<sys/socket.h>    //socket
 #include<arpa/inet.h> //inet_addr
+
+#define MAX_BUFFER_LEN 65536
+#define MAX_STRING_LEN 255
  
 int main(int argc , char *argv[])
 {
     int sock;
     struct sockaddr_in server;
-    char message[256] , server_reply[65536];
+    char message[MAX_STRING_LEN] , server_reply[MAX_BUFFER_LEN];
      
     if (4 != argc)
       {
@@ -45,7 +48,7 @@ int main(int argc , char *argv[])
     }
          
     //Receive a reply from the server
-    if( recv(sock , server_reply , 65536, 0) < 0)
+    if( recv(sock , server_reply , MAX_BUFFER_LEN , 0) < 0)
     {
         puts("recv failed");
         return 1;

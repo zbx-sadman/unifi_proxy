@@ -15,14 +15,14 @@ use IO::Socket;
 use IO::Socket::SSL ();
 
 use constant {
-#     CONFIG_FILE_DEFAULT => '/etc/unifi_proxy/unifi_proxy.conf',
-     CONFIG_FILE_DEFAULT => './unifi_proxy.conf',
+     CONFIG_FILE_DEFAULT => '/etc/unifi_proxy/unifi_proxy.conf',
      TOOL_HOMEPAGE => 'https://github.com/zbx-sadman/unifi_proxy',
      TOOL_NAME => 'UniFi Proxy',
      TOOL_VERSION => '1.0.0',
 #     TOOL_UA => 'UniFi Proxy 1.0.0',
 
-     ACT_PERCENT => 'percent',
+     ACT_PCOUNT => 'pcount',
+     ACT_PSUM => 'psum',
      ACT_COUNT => 'count',
      ACT_SUM => 'sum',
      ACT_GET => 'get',
@@ -67,7 +67,6 @@ sub getMetric;
 sub handleCHLDSignal;
 sub handleConnection;
 sub handleTERMSignal;
-sub makeLLD;
 sub readConf;
 
 my $options, my $res;
@@ -262,10 +261,12 @@ sub makeServer {
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 sub handleConnection {
     my $socket = $_[1];
-    my @objJSON=();
     my $gC;
     my $buffer;
     my $buferLength;
+    my $siteList;
+    my $objList;
+    my $lldPiece;
 
     # copy serverConfig to localConfig for saving default values 
     %{$gC}=%{$_[0]};
@@ -276,6 +277,8 @@ sub handleConnection {
 #       my $bytes=sysread($socket, $buffer, MAX_REQUEST_LEN);
 #       redo unless ($bytes < 0);
        last unless ($buffer);
+       ################################################## Request analyzing  ##################################################
+
        chomp ($buffer);
        logMessage("[.]\t\tIncoming line: '$buffer'", DEBUG_LOW);
        # split line to action, object type, sitename, key, id, cache_timeout (need to add user name, user password, controller version ?)
@@ -316,41 +319,125 @@ sub handleConnection {
           }
        }
 
-       # flag for LLD routine
-       if ($gC->{'action'} eq ACT_DISCOVERY) {
-          # Call sub for made LLD-like JSON
-          logMessage("[*] LLD requested", DEBUG_LOW);
-          makeLLD($gC, $buffer);
-#          fetchData($gC, $gC->{'sitename'}, $gC->{'objecttype'}, $gC->{'id'}, \@objJSON);
-          next;
-       }
+    ################################################## Main action ##################################################
+    # made fake site list, cuz fetchData(v2) just ignore sitename
+    $siteList=[{'name' => $gC->{'sitename'}}];
 
-       if ($gC->{'key'}) {
-          # Key is given - need to get metric. 
-          # if $globalConfig->{'id'} is exist then metric of this object has returned. 
-          # If not - calculate $globalConfig->{'action'} for all items in objects list (all object of type = 'object name', for example - all 'uap'
-          # load JSON data & get metric
-          logMessage("[*] Key given: $gC->{'key'}", DEBUG_LOW);
-          if (! fetchData($gC, $gC->{'sitename'}, $gC->{'objecttype'}, $gC->{'id'}, \@objJSON)) {
-             $buffer="[!] FetchData error";
-             logMessage($buffer, DEBUG_LOW);
-             next;
-          }
-          getMetric($gC, \@objJSON, $gC->{'key'}, $buffer);
-          @objJSON=();
-       }
-  } continue {
-       # Value could be null-type (undef in Perl). If need to replace null to other char - {'null_char'} must be defined. On default $gC->{'null_char'} is ''
-       $buffer = $gC->{'null_char'} unless defined($buffer);
-       $buferLength = length($buffer);
-       # MAX_BUFFER_LEN - Zabbix buffer length. Sending more bytes have no sense.
-       if ( MAX_BUFFER_LEN <= $buferLength) {
-           $buferLength = MAX_BUFFER_LEN-1;
-           $buffer = substr($buffer, 0, $buferLength);
-       }
-#       $buffer .= "\n";
-       # Push buffer to socket
-       print $socket "$buffer\n";
+    # if OBJ_SITE exists in fetch_rules - siteList could be obtained for 'discovery' action or in case with undefuned sitename
+    if ($gC->{'fetch_rules'}->{&OBJ_SITE} && (ACT_DISCOVERY eq $gC->{'action'} || !$gC->{'sitename_given'}))  {
+        # Clear array, because fetchData() will push data to its
+        $siteList=();
+        # Get site list. v3 need {'sitename'} to use into 'cmd' URI
+        fetchData($gC, $gC->{'sitename'}, OBJ_SITE, '', $siteList);# or return FALSE;
+    }
+
+    logMessage("[.]\t\t Going over all sites", DEBUG_MID);
+    foreach my $siteObj (@{$siteList}) {
+      # parentObject used for transfer site (or device) info to LLD. That data used for "parent"-related macro (like {#SITENAME}, {#UAPID})
+      my $parentObj={};
+      # skip hidden site 'super'
+      next if (defined($siteObj->{'attr_hidden'}));
+      # skip site, if '-s' option used and current site other, that given
+      next if ($gC->{'sitename_given'} && ($gC->{'sitename'} ne $siteObj->{'name'}));
+
+      logMessage("[.]\t\t Handle site: '$siteObj->{'name'}'", DEBUG_MID);
+      $objList=();
+      # make parent object from siteObj for made right macroses in addToLLD() sub
+      $parentObj={'type' => OBJ_SITE, 'data' => $siteObj};
+      # user ask info for 'site' object. Data already loaded to $siteObj.
+      if (OBJ_SITE eq $gC->{'objecttype'}) {
+         # Just make array from site object (which is hash) and take null for parenObj - no parent for 'site' exists
+         $objList=[$siteObj], $parentObj=undef;
+      } else {
+         # Take objects from foreach'ed site
+         fetchData($gC, $siteObj->{'name'}, $gC->{'objecttype'}, $gC->{'id'}, $objList) or logMessage("[!] No data fetched from site '$siteObj->{'name'}', stop", DEBUG_MID), return FALSE;
+      }
+
+#      logMessage("[.]\t\t Objects list:\n\t".(Dumper $objList), DEBUG_HIGH);
+      # check requested key
+      if (! $gC->{'key'}) {
+         # No key given - user need to discovery objects. 
+#         if (ACT_DISCOVERY eq $gC->{'action'}) {
+          logMessage("[.]\t\t Discovering w/o key: add part of LLD", DEBUG_MID);
+          addToLLD($gC, $parentObj, $objList, $lldPiece) if ($objList);
+#         }
+      } else {
+         # key is defined - any action could be processed
+         logMessage("[*] Key given: $gC->{'key'}", DEBUG_LOW);
+         # How much objects into list?
+         my $objListSize=@{$objList};
+         logMessage("[.]\t\t Objects list size: $objListSize", DEBUG_MID);
+         # need 'discovery' action?
+         if (ACT_DISCOVERY eq $gC->{'action'}) {
+#             logMessage("[.]\t\t Discovery with key $gC->{'key'}", DEBUG_MID);
+             # Going over all object, because user can ask for key-based LLD
+             for (my $i=0; $i < $objListSize; $i++) {
+               $_=@{$objList}[$i];
+               logMessage("[.]\t\t Key is '$_[0]->{'key'}', check its existiense in JSON", DEBUG_MID);
+               # Given key have corresponding JSON-key?
+               if (exists($_->{$gC->{'key'}})) {
+                  logMessage("[.]\t\t Corresponding JSON-key is found", DEBUG_MID);
+                  # prepare parent object
+                  $parentObj={ 'type' => $gC->{'objecttype'}, 'data' => $_};
+                  # test JSON-key type
+                  if ('ARRAY' eq ref($_->{$gC->{'key'}})) {
+                     # Array: use this nested array instead object
+                     $_=$_->{$gC->{'key'}};
+#                     logMessage("[.]\t\t JSON-key refer to ARRAY", DEBUG_MID);
+                  } elsif ('HASH' eq ref($_->{$gC->{'key'}})) {
+                     # Hash: make one-elementh array from hash
+                     $_=[$_->{$gC->{'key'}}];
+                     logMessage("[.]\t\t JSON-key refer to HASH", DEBUG_MID);
+                  } else {
+                     # Other types can't be processed with LLD, force skip adding data to LLD
+                     $_=();
+                  } # if 'ARRAY' eq ref...
+               } else {
+                 # No JSON-key exists, force skip adding data to LLD
+                 $_=();
+               } # if exists($_->..{'key'})
+               # Add data to LLD-response if its exists 
+               addToLLD($gC, $parentObj, $_, $lldPiece) if ($_);
+            } #  for (... $i < $objListSize...)
+         }  else {  # if ACT_DISCOVERY 
+            # Other than 'discovery' action need - use getMetric() sub and store result to temporary variable
+            getMetric($gC, $objList, $gC->{'key'}, $_);
+            # 'get' - just get data from first site's first object  in objectList and jump out from loop
+            $buffer=$_, last if (ACT_GET eq $gC->{'action'});
+            # with other actions sum result & go to next iteration
+            $buffer+=$_;
+         } # if ACT_DISCOVERY ... else 
+
+      } # if (! $gC->{'key'}) ...else...
+    } #foreach sites
+
+    ################################################## Final stage of main loop  ##################################################
+  } continue { 
+    # Made xx.yy number from result of 'percent-count', 'percent-sum' actions
+    $buffer = sprintf("%.2f", ((0 == $siteList) ? 0 : ($buffer/$siteList))) if (ACT_PCOUNT eq $_[0]->{'action'} || ACT_PSUM eq $_[0]->{'action'});
+
+    # Form JSON from result for 'discovery' action
+    if (ACT_DISCOVERY eq $gC->{'action'}) {
+       logMessage("[.] Make LLD JSON", DEBUG_MID);
+       defined($lldPiece) or logMessage("[!] No data found for object $gC->{'objecttype'} (may be wrong site name), stop", DEBUG_MID), return FALSE;
+       # link LLD to {'data'} key
+       undef($buffer),
+       $buffer->{'data'} = $lldPiece,
+       # make JSON
+       $buffer=$gC->{'jsonxs'}->encode($buffer);
+    }
+
+    # Value could be null-type (undef in Perl). If need to replace null to other char - {'null_char'} must be defined. On default $gC->{'null_char'} is ''
+    $buffer = $gC->{'null_char'} unless defined($buffer);
+    $buferLength = length($buffer);
+    # MAX_BUFFER_LEN - Zabbix buffer length. Sending more bytes have no sense.
+    if ( MAX_BUFFER_LEN <= $buferLength) {
+        $buferLength = MAX_BUFFER_LEN-1;
+        $buffer = substr($buffer, 0, $buferLength);
+    }
+#    $buffer .= "\n";
+    # Push buffer to socket
+    print $socket "$buffer\n";
 #       syswrite($socket, $buffer, $buferLength);    
   }
 
@@ -372,11 +459,10 @@ sub getMetric {
 
     # dive to...
     $_[0]->{'dive_level'}++;
-
     logMessage("[+] ($_[0]->{'dive_level'}) getMetric() started", DEBUG_LOW);
     my $key=$_[2], my $objList;
 
-    logMessage("[>]\t args: key: '$_[2]', action: '$_[0]->{'action'}'", DEBUG_LOW);
+    logMessage("[>]\t args: key: '$key', action: '$_[0]->{'action'}'", DEBUG_LOW);
 #    logMessage("[>]\t incoming object info:'\n\t".(Dumper $_[1]), DEBUG_HIGH);
 
     # correcting maxDepth for ACT_COUNT operation
@@ -415,9 +501,9 @@ sub getMetric {
 
                # !!! need to fix trying sum of not numeric values
                # With 'sum' - grow $result
-               if (ACT_SUM eq $_[0]->{'action'}) { 
+               if (ACT_SUM eq $_[0]->{'action'} || ACT_PSUM eq $_[0]->{'action'}) { 
                   $_[3]+=$paramValue; 
-               } elsif (ACT_COUNT eq $_[0]->{'action'} || ACT_PERCENT eq $_[0]->{'action'}) {
+               } elsif (ACT_COUNT eq $_[0]->{'action'} || ACT_PCOUNT eq $_[0]->{'action'}) {
                   # may be wrong algo :(
                   # workaround for correct counting with deep diving
                   # With 'count' we must count keys in objects, that placed only on last level
@@ -495,7 +581,7 @@ sub getMetric {
           } elsif (exists($_[1]->{$key})) {
              # Otherwise - just return value for given key
              logMessage("[.]\t\t It's key. Take value... '$_[1]->{$key}'", DEBUG_MID);
-             if (ACT_COUNT eq $_[0]->{'action'} || ACT_PERCENT eq $_[0]->{'action'}) {
+             if (ACT_COUNT eq $_[0]->{'action'} || ACT_PCOUNT eq $_[0]->{'action'}) {
                 $_[3]=1;
              } else {
                 $_[3]=$_[1]->{$key};
@@ -513,7 +599,7 @@ sub getMetric {
   $_[0]->{'dive_level'}--;
 
   # sprintf used for round up to xx.yy
-  $_[3] = sprintf("%.2f", ((0 == $objList) ? 0 : ($_[3]/($objList/100)))) if ((ACT_PERCENT eq $_[0]->{'action'}) && (0 == $_[0]->{'dive_level'}));
+  $_[3] = (0 == $objList) ? 0 : ($_[3]/($objList/100)) if ((ACT_PCOUNT eq $_[0]->{'action'} || ACT_PSUM eq $_[0]->{'action'}) && (0 == $_[0]->{'dive_level'}));
 
   return TRUE;
 }
@@ -703,81 +789,6 @@ sub fetchDataFromController {
 #   logMessage("[<]\t decoded data:\n\t".(Dumper $_[2]), DEBUG_HIGH);
    $_[0]->{'downloaded'}=TRUE;
    return TRUE;
-}
-
-#*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
-#
-#  Generate LLD-like JSON using fetched data
-#
-#*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
-sub makeLLD {
-    # $_[0] - $globalConfig
-    # $_[1] - result
-    #
-    #  addToLLD() must be called with parentObj (siteObj now);
-    #
-    #
-    logMessage("[+] makeLLD() started", DEBUG_LOW);
-    logMessage("[>]\t args: object type: '$_[0]->{'objecttype'}'", DEBUG_MID);
-    my $jsonObj, my $lldResponse, my $lldPiece; my $siteList=(), my $objList =(),
-    my $givenObjType=$_[0]->{'objecttype'}, my $siteWalking=FALSE, my $siteObj;
-
-    $siteWalking=TRUE if (defined($_[0]->{'fetch_rules'}->{&OBJ_SITE}) && (!$_[0]->{'sitename_given'}));
-    
-    # return right JSON on error or not?
-    # $_[1]="{\"data\":[]}";
-    $_[1]="{\"data\":error on lld generate}";
-
-    # if no OBJ_SITE in fetch_rules - it's v2 controller, which not support sites
-    if ($_[0]->{'fetch_rules'}->{&OBJ_SITE}) {
-        # Get site list
-        fetchData($_[0], $_[0]->{'sitename'}, OBJ_SITE, '', $siteList);# or return FALSE;
-    } else {
-        # or made fake site list
-        $siteList=[{'name' => 'default'}];
-    }
-
-    if (OBJ_SITE eq $givenObjType) {
-        addToLLD($_[0], undef, $siteList, $lldPiece) if ($siteList);
-     } else {
-        foreach my $siteObj (@{$siteList}) {
-          my $parentObj={};
-          # skip hidden site 'super', 0+ convert literal true/false to decimal
-          next if (defined($siteObj->{'attr_hidden'}));
-          # skip site, if '-s' option used and current site other, that given
-          next if ($_[0]->{'sitename_given'} && ($_[0]->{'sitename'} ne $siteObj->{'name'}));
-          logMessage("[.]\t\t Handle site: '$siteObj->{'name'}'", DEBUG_MID);
-          # make parent object from siteObj for made right macroses in addToLLD() sub
-          $parentObj={'type' => OBJ_SITE, 'data' => $siteObj};
-          # Not nulled list causes duplicate LLD items
-          $objList=();
-          # Take objects from foreach'ed site
-          fetchData($_[0], $siteObj->{'name'}, $givenObjType, $_[0]->{'id'}, $objList) or logMessage("[!] No data fetched from site '$siteObj->{'name'}', stop", DEBUG_MID), return FALSE;
-          #   print Dumper $_[4];
-          # if JSON contain only one array element with object
-          if (defined($_[0]->{'id'}) && 'ARRAY' eq ref($objList) && 1 == @{$objList}) {
-             # if given key exist inside this object and point to array too...
-             if (exists(@{$objList}[0]->{$_[0]->{'key'}}) && 'ARRAY' eq ref(@{$objList}[0]->{$_[0]->{'key'}})) {
-                # store parent object
-                $parentObj={'type' => $givenObjType, 'data' => @{$objList}[0]};
-                # use this nested array instead object
-                $objList=@{$objList}[0]->{$_[0]->{'key'}};
-             }
-          }
-          # Add its info to LLD-response 
-#          logMessage("[.]\t\t Objects list:\n\t".(Dumper $objList), DEBUG_HIGH);
-          addToLLD($_[0], $parentObj, $objList, $lldPiece) if ($objList);
-        } #foreach
-     }    
-    defined($lldPiece) or logMessage("[!] No data found for object $givenObjType (may be wrong site name), stop", DEBUG_MID), return FALSE;
-    # link LLD to {'data'} key
-    undef($_[1]),
-     $_[1]->{'data'} = $lldPiece,
-    # make JSON
-    $_[1]=$_[0]->{'jsonxs'}->encode($_[1]);
-#    logMessage("[<]\t Generated LLD:\n\t".(Dumper $_[1]), DEBUG_HIGH);
-    logMessage("[-] makeLLD() finished", DEBUG_LOW);
-    return TRUE;
 }
 
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
