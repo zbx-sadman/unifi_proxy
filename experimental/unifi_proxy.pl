@@ -821,7 +821,7 @@ sub addToLLD {
             $_[3][$o]->{'{#SITEID}'}    = "$parentObjData->{'_id'}";
             $_[3][$o]->{'{#SITENAME}'}  = "$parentObjData->{'name'}";
             # In v3 'desc' key is not exist, and site desc == name
-            $_[3][$o]->{'{#SITEDESC}'}  = $_[1]->{'desc'} ? "$parentObjData->{'desc'}" : "$parentObjData->{'name'}";
+            $_[3][$o]->{'{#SITEDESC}'}  = $parentObjData->{'desc'} ? "$parentObjData->{'desc'}" : "$parentObjData->{'name'}";
          } elsif (OBJ_USW eq $parentObjType) {
             $_[3][$o]->{'{#USWID}'}    = "$parentObjData->{'_id'}";
             $_[3][$o]->{'{#USWNAME}'}  = "$parentObjData->{'name'}";
@@ -849,6 +849,7 @@ sub addToLLD {
       } elsif (OBJ_USER eq $givenObjType) {
          # sometime {hostname} may be null. UniFi controller replace that hostnames by {'mac'}
          $_[3][$o]->{'{#NAME}'}      = $_->{'hostname'} ? "$_->{'hostname'}" : "$_->{'mac'}";
+         $_[3][$o]->{'{#OUI}'}       = "$_->{'oui'}";
       } elsif (OBJ_UPH eq $givenObjType) {
          $_[3][$o]->{'{#ID}'}        = "$_->{'device_id'}";
       } elsif (OBJ_SITE eq $givenObjType) {
