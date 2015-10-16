@@ -88,6 +88,7 @@ int	zbx_module_unifi_proxy(AGENT_REQUEST *request, AGENT_RESULT *result)
         int 		i, p, np;
         zbx_sock_t	s;
         char		send_buf[MAX_STRING_LEN];
+        const char		*recv_buf;
 	    
         *send_buf='\0';
 
@@ -116,10 +117,11 @@ int	zbx_module_unifi_proxy(AGENT_REQUEST *request, AGENT_RESULT *result)
             if (SUCCEED == (ret = zbx_tcp_send_raw(&s, send_buf)))
                {
                   // Recive answer from UniFi Proxy
-                  if (SUCCEED == (ret = zbx_tcp_recv(&s))) {
-                        zbx_rtrim(s.buffer, "\r\n");
-                        SET_STR_RESULT(result, strdup(s.buffer));
+                  if (NULL != (recv_buf = zbx_tcp_recv_line(&s))) {
+//                        zbx_rtrim(recv_buf, "\r\n");
+                        SET_STR_RESULT(result, strdup(recv_buf));
                      }
+                 else { ret = FAIL; }
                }
             zbx_tcp_close(&s);
         }
