@@ -4,11 +4,13 @@
 #include<arpa/inet.h> //inet_addr
 
 #define MAX_BUFFER_LEN 65536
-#define MAX_STRING_LEN 255
- 
+#define MAX_STRING_LEN 255 
+
 int main(int argc , char *argv[])
 {
+    int sock, npos, success;
     struct sockaddr_in server;
+    char message[MAX_STRING_LEN] , server_reply[MAX_BUFFER_LEN], buff;
      
     if (4 != argc)
       {
@@ -46,8 +48,15 @@ int main(int argc , char *argv[])
     }
          
     //Receive a reply from the server
+    npos=0;
+    while (npos <= MAX_BUFFER_LEN)
     {
+      success = recv(sock, (char*) &buff, 1, 0);
+      if ((buff == '\n') || (! success) ) { break; }
+      server_reply[npos] = buff;
+      npos++;
     }
+    server_reply[npos]='\0';
     puts(server_reply);
 
     close(sock);
