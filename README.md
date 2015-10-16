@@ -15,7 +15,7 @@ It is a TCP server written in Perl, which helps deliver to the monitoring system
 
 ![Zabbix: connected clients](http://community.ubnt.com/t5/image/serverpage/image-id/53219iB1CA79D24EFB2BEB/image-size/original)
 
-If you have a question about Proxy, please, refer to [UniFi Proxy Russian Guide] (https://github.com/zbx-sadman/unifi_proxy/wiki/UniFi-Proxy-Guide-in-Russian). Translation to English in progress.
+If you have a question about Proxy, please, refer to [UniFi Proxy Russian Guide] (https://github.com/zbx-sadman/unifi_proxy/wiki/UniFi-Proxy-Guide-in-Russian) or [UniFi Proxy English Guide] (https://github.com/zbx-sadman/unifi_proxy/wiki/UniFi-Proxy-Guide-in-English).
 
 If u have an problem, you can search the existing closed or open [issues](https://github.com/zbx-sadman/unifi_proxy/issues). 
 
