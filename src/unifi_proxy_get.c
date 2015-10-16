@@ -8,9 +8,7 @@
  
 int main(int argc , char *argv[])
 {
-    int sock;
     struct sockaddr_in server;
-    char message[MAX_STRING_LEN] , server_reply[MAX_BUFFER_LEN];
      
     if (4 != argc)
       {
@@ -48,12 +46,8 @@ int main(int argc , char *argv[])
     }
          
     //Receive a reply from the server
-    if( recv(sock , server_reply , MAX_BUFFER_LEN , 0) < 0)
     {
-        puts("recv failed");
-        return 1;
     }
-         
     puts(server_reply);
 
     close(sock);
