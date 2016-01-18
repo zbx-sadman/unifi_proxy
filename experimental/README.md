@@ -9,6 +9,12 @@
 - psum - вычисление процента суммы значений подпадающих под фильтр JSON-ключей от общей суммы.
 - pcount - вычисление процента количества значений подпадающих под фильтр JSON-ключей от общего количества.
 
+Для ключей-фильтров доступны:
+- логическая операция _&_ (_and_)  - фильтр считается пройденным при выполнении всех условий;
+- логическая операция _|_ (_or_)  - фильтр считается пройденным при выполнении любого условия;
+- состояние равенства в условии _=_;
+- состояние неравенства в условии _<>_ .
+
 Добавлены новые объекты:
 - alluser - все пользователи в базе данных (объект user определяет только активных пользователей);
 - health - состояние контроллера UniFi (см. дашбоард в v4);
@@ -23,33 +29,66 @@
 - uap_vap_table - список виртуальных точек доступа в пределах заданной UAP;
 - usw_port_table - таблица портов UniFi Switch;
 
-### Пояснения, примеры
+### Примеры
 
-# LLD-JSON для всех UAP для сайта "default"
-./unifi_proxy_get 127.0.0.1 8448 "discovery,uap,default"
+LLD-JSON для всех UAP для сайта "default"
 
-# LLD-JSON для всех UAP во всех сайтах контроллера
-./unifi_proxy_get 127.0.0.1 8448 "discovery,uap"
+    ./unifi_proxy_get 127.0.0.1 8448 "discovery,uap,default"
 
-# Процент активных пользователей во всех сайтах контроллера
-./unifi_proxy_get 127.0.0.1 8448 "sum,site,,num_sta"
+LLD-JSON для всех UAP во всех сайтах контроллера
 
-# Количество активных UAP во всех сайтах контроллера
-./unifi_proxy_get 127.0.0.1 8448 "count,uap,,[state=1].state"
+    ./unifi_proxy_get 127.0.0.1 8448 "discovery,uap"
 
-# Процент активных UAP от их общего числа во всех сайтах контроллера
-./unifi_proxy_get 127.0.0.1 8448 "pcount,uap,,[state=1].state"
+Процент активных пользователей во всех сайтах контроллера
 
-# Процент траффика, генерируемого гостевыми виртуальными точками доступа
-./unifi_proxy_get 127.0.0.1 8448 "psum,uap,,vap_table.[is_guest=1].rx_bytes"
+    ./unifi_proxy_get 127.0.0.1 8448 "sum,site,,num_sta"
+
+Количество активных UAP во всех сайтах контроллера
+
+    ./unifi_proxy_get 127.0.0.1 8448 "count,uap,,[state=1].state"
+
+Процент активных UAP от их общего числа во всех сайтах контроллера
+
+    ./unifi_proxy_get 127.0.0.1 8448 "pcount,uap,,[state=1].state"
+
+Процент траффика, генерируемого гостевыми виртуальными точками доступа
+
+    ./unifi_proxy_get 127.0.0.1 8448 "psum,uap,,vap_table.[is_guest=1].rx_bytes"
+
+Процент активных пользователей, поключенных с помощью продукции фирмы Apple
+
+    ./unifi_proxy_get 127.0.0.1 8448 "pcount,user,,[oui=Apple].oui"
+
+Процент активных пользователей, поключенных с помощью любых иных устройств, кроме продукции фирмы Apple.
+
+    ./unifi_proxy_get 127.0.0.1 8448 "pcount,user,,[oui<>Apple].oui"
+
+Процент когда-либо подключавшихся пользователей, использовавших продукцию фирмы Apple или Samsung.
+
+    ./unifi_proxy_get 127.0.0.1 8448 "pcount,user,,[oui=Apple|oui=SamsungE].oui"
+
+Версия ПО контроллера UniFi
+    
+    ./unifi_proxy_get 127.0.0.1 8448 "get,sysinfo,,version"
+
+Состояние модуля WLAN, отображаемого на dashboard веб-интерфейса контроллера UniFi
+    
+    ./unifi_proxy_get 127.0.0.1 8448 "get,health,default,[subsystem=wlan].status"
+
+Количество активных пользователей, зарегистрированных модулем WLAN
+    
+    ./unifi_proxy_get 127.0.0.1 8448 "get,health,default,[subsystem=wlan].num_user"
+
+LLD-JSON для VOIP-устройств, зарегистрированных на контроллере
+    
+    ./unifi_proxy_get 127.0.0.1 8448 "discovery,extension,default"
+
+Абонентский номер VOIP-устройства, ассоциированный с extension с заданным ID
+
+    ./unifi_proxy_get 127.0.0.1 8448 "get,number,default,[extension_id=5698e7779932af54c74bad18].number"
 
 
-
-
-
-
-
-
+-------------------
 
 Core function getMetric() was reworked and built now on stack mechanism instead recursive self call on JSON tree traversal.
 New actions:
