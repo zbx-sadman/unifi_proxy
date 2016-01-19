@@ -10,7 +10,7 @@ use warnings;
 use Data::Dumper ();
 use JSON::XS ();
 use LWP ();
-use POSIX;
+use POSIX ();
 use IO::Socket ();
 use IO::Socket::SSL ();
 
@@ -23,12 +23,12 @@ use constant {
 #     TOOL_UA => 'UniFi Proxy 1.1.0',
 
      # *** Actions ***
+     ACT_GET => 'get',
+     ACT_COUNT => 'count',
+     ACT_DISCOVERY => 'discovery',
      ACT_PCOUNT => 'pcount',
      ACT_PSUM => 'psum',
-     ACT_COUNT => 'count',
      ACT_SUM => 'sum',
-     ACT_GET => 'get',
-     ACT_DISCOVERY => 'discovery',
 
      # *** Controller versions ***
      CONTROLLER_VERSION_2 => 'v2',
@@ -89,27 +89,29 @@ sub handleCHLDSignal;
 sub handleConnection;
 sub handleTERMSignal;
 sub readConf;
+sub logMessage;;
 
 my $options, my $res;
-my $ck, my $wk;
-for my $arg (@ARGV) {
-  # try to take key from arg[i]
-  ($ck) = $arg =~ m/^-(.+)/;
-  # key is '--version' ? Set flag && do nothing inside loop
-  $options->{'version'} = TRUE, next if ($ck && ($ck eq '-version'));
-  # key is --help - do the same
-  $options->{'help'} = TRUE, next if ($ck && ($ck eq '-help'));
-  # key is defined? Init hash item
-  $options->{$ck}='' if ($ck);
-  # not defined - store value to hash item with 'key' id.
-  $options->{$wk}=$arg, next unless ($ck);
-  # remember key for next loop, where it may be used for storing value to hash
-  $wk=$ck;
+
+for (@ARGV) {
+    # try to take key from $_
+    if ( m/^[-](.+)/) {
+       # key is '--version' ? Set flag && do nothing inside loop
+       $options->{'version'} = TRUE, next if ($1 eq '-version');
+       # key is --help - do the same
+       $options->{'help'}    = TRUE, next if ($1 eq '-help');
+       # key is just found? Init hash item
+       $options->{$1}='';
+    } else {
+       # key not found - store value to hash item with $1 id.
+       # $1 stay store old valued while next matching will not success
+       $options->{$1}=$_ if (defined($1));
+    }
 }
-            
+
 
 if ($options->{'version'}) {
-   print "\n",TOOL_NAME," v", TOOL_VERSION ,"\n";
+   print "\n",TOOL_NAME," v", TOOL_VERSION ,"\n\n";
    exit 0;
 }
   
@@ -137,7 +139,7 @@ my $servers        = {};
 my $servers_num    = 0;
 
 # Read config
-readConf;
+readConf();
 # Bind to addr:port
 my $server = IO::Socket::INET->new(LocalAddr => $globalConfig->{'listenip'}, 
                                    LocalPort => $globalConfig->{'listenport'}, 
@@ -148,11 +150,11 @@ my $server = IO::Socket::INET->new(LocalAddr => $globalConfig->{'listenip'},
 
 
 # Assign subs to handle Signals
-$SIG{INT} = $SIG{TERM} = \&handleINTSignal;
-$SIG{HUP} = \&handleHUPSignal;
+$SIG{INT}  = $SIG{TERM} = \&handleINTSignal;
+$SIG{HUP}  = \&handleHUPSignal;
 $SIG{CHLD} = \&handleCHLDSignal;
 # And maintain the population.
-while (1) {
+while (TRUE) {
     for (my $i = $servers_num; $i < $globalConfig->{'startservers'}; $i++) {
         # add several server instances if need
         makeServer();             
@@ -170,8 +172,9 @@ exit;
 sub logMessage
   {
     return unless ($globalConfig->{'debuglevel'} >= $_[1]);
-    print "[$$] ", strftime("%Y-%m-%d %H:%M:%S", localtime(time())), " $_[0]\n";
+    print "[$$] ", POSIX::strftime("%Y-%m-%d %H:%M:%S", localtime(time())), " $_[0]\n";
   }
+
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 #
 #  Handle CHLD signal
@@ -181,7 +184,7 @@ sub logMessage
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 sub handleCHLDSignal {
     my $pid;
-    while ( 0 < ($pid = waitpid(-1, WNOHANG))) {
+    while ( 0 < ($pid = waitpid(-1, POSIX::WNOHANG))) {
           delete $servers->{$pid};
           $servers_num --;
     }
@@ -217,15 +220,15 @@ sub makeServer {
     # make copy of global config to stop change $_[0] by fork's copy-write procedure
    
     # block signal for fork
-    $sigset = POSIX::SigSet->new(SIGINT);
-    sigprocmask(SIG_BLOCK, $sigset) or die "[!] Can't block SIGINT for fork: $!\n";
+    $sigset = POSIX::SigSet->new(POSIX::SIGINT);
+    POSIX::sigprocmask(POSIX::SIG_BLOCK, $sigset) or die "[!] Can't block SIGINT for fork: $!\n";
 
     # if $pid is undefined - fork creating error caused
     die "[!] fork: $!" unless defined ($pid = fork);
     
     if ($pid) {
         # Parent records the child's birth and returns.
-        sigprocmask(SIG_UNBLOCK, $sigset) or die "[!] Can't unblock SIGINT for fork: $!\n";
+        POSIX::sigprocmask(POSIX::SIG_UNBLOCK, $sigset) or die "[!] Can't unblock SIGINT for fork: $!\n";
         $servers->{$pid} = 1;
         $servers_num++;
         $globalConfig->{'pid'}=$pid;
@@ -238,7 +241,7 @@ sub makeServer {
         $SIG{INT} = 'DEFAULT';     
 
         # unblock signals
-        sigprocmask(SIG_UNBLOCK, $sigset) or die "[!] Can't unblock SIGINT for fork: $!\n";
+        POSIX::sigprocmask(POSIX::SIG_UNBLOCK, $sigset) or die "[!] Can't unblock SIGINT for fork: $!\n";
 
         my $serverConfig;
         # copy hash with globalConfig to serverConfig to prevent 'copy-on-write'.
@@ -278,28 +281,30 @@ sub handleConnection {
     my $socket = $_[1];
     my $gC, my $buffer, my $buferLength, my $siteList, my $objList, my $lldPiece, my $bytes;
     my $opt_a, my $opt_o, my $opt_s, my $opt_k, my $opt_i, my $opt_c, my $parentObj, my $objListSize;
+    logMessage("[+] handleConnection() started", DEBUG_LOW);
 
     # copy serverConfig to localConfig for saving default values 
     %{$gC} = %{$_[0]};
 
     # read line from socket
-    while (1) {
+    while (TRUE) {
        $bytes = sysread($socket, $buffer, MAX_REQUEST_LEN);
        last unless ($buffer);
        ################################################## Request analyzing  ##################################################
 
        chomp ($buffer);
-       logMessage("[.]\t\tIncoming line: '$buffer'", DEBUG_LOW);
+       logMessage("[.]\t Incoming line: '$buffer'", DEBUG_LOW);
        # split line to action, object type, sitename, key, id, cache_timeout (need to add user name, user password, controller version ?)
        ($opt_a, $opt_o, $opt_s, $opt_k, $opt_i, $opt_c) = split(/[,]/, $buffer);
        $buffer = undef;
 
        # fast validate object type  
-       $gC->{'objecttype'}      = $opt_o ? $opt_o : $_[0]->{'objecttype'};
+#       $gC->{'objecttype'}        = $opt_o // $_[0]->{'objecttype'};
+       $gC->{'objecttype'}       = $opt_o ? $opt_o : $_[0]->{'objecttype'};
        unless ($gC->{'fetch_rules'}->{$gC->{'objecttype'}}) {
-#           $buffer="[!] No object type $gC->{'objecttype'} supported";
-#           logMessage($buffer, DEBUG_LOW);
-           logMessage("[!] No object type $gC->{'objecttype'} supported", DEBUG_LOW);
+           # $buffer will processed in 'continue' block
+           $buffer="[!] No object type $gC->{'objecttype'} supported";
+           logMessage($buffer, DEBUG_LOW);
            next;
        }
        # fast check action need too
@@ -361,13 +366,13 @@ sub handleConnection {
       # user ask info for 'site' object. Data already loaded to $siteObj.
       if (OBJ_SITE eq $gC->{'objecttype'}) {
          # Just make array from site object (which is hash) and take null for parenObj - no parent for 'site' exists
-         $objList=[$siteObj], $parentObj=undef;
+         $objList=[$siteObj], undef $parentObj;
       } else {
          # Take objects from foreach'ed site
          fetchData($gC, $siteObj->{'name'}, $gC->{'objecttype'}, $gC->{'id'}, $objList) or logMessage("[!] No data fetched from site '$siteObj->{'name'}', stop", DEBUG_MID), return FALSE;
       }
 
-#      logMessage("[.]\t\t Objects list:\n\t".(Dumper $objList), DEBUG_HIGH);
+      logMessage("[.]\t\t Objects list:\n\t".(Data::Dumper::Dumper $objList), DEBUG_HIGH) if ($globalConfig->{'debuglevel'} >= DEBUG_HIGH);
       # check requested key
       if (! $gC->{'key'}) {
          # No key given - user need to discovery objects. 
@@ -377,13 +382,13 @@ sub handleConnection {
 #         }
       } else {
          # key is defined - any action could be processed
-         logMessage("[*] Key given: $gC->{'key'}", DEBUG_LOW);
+         logMessage("[*]\t\t Key given: $gC->{'key'}", DEBUG_LOW);
          # How much objects into list?
          $objListSize = defined(@{$objList}) ? @{$objList} : 0;
          logMessage("[.]\t\t Objects list size: $objListSize", DEBUG_MID);
          # need 'discovery' action?
          if (ACT_DISCOVERY eq $gC->{'action'}) {
-#             logMessage("[.]\t\t Discovery with key $gC->{'key'}", DEBUG_MID);
+             logMessage("[.]\t\t Discovery with key $gC->{'key'}", DEBUG_MID);
              # Going over all object, because user can ask for key-based LLD
              for (my $i=0; $i < $objListSize; $i++) {
                $_ = @{$objList}[$i];
@@ -397,7 +402,7 @@ sub handleConnection {
                   if ('ARRAY' eq ref($_->{$gC->{'key'}})) {
                      # Array: use this nested array instead object
                      $_ = $_->{$gC->{'key'}};
-#                     logMessage("[.]\t\t JSON-key refer to ARRAY", DEBUG_MID);
+                     logMessage("[.]\t\t JSON-key refer to ARRAY", DEBUG_MID);
                   } elsif ('HASH' eq ref($_->{$gC->{'key'}})) {
                      # Hash: make one-elementh array from hash
                      $_ = [$_->{$gC->{'key'}}];
@@ -446,19 +451,17 @@ sub handleConnection {
     $buferLength = length($buffer);
     # MAX_BUFFER_LEN - Zabbix buffer length. Sending more bytes have no sense.
     if ( MAX_BUFFER_LEN <= $buferLength) {
-        $buferLength = MAX_BUFFER_LEN-1;
+        $buferLength = MAX_BUFFER_LEN-1, 
         $buffer = substr($buffer, 0, $buferLength);
-    } else {
-      $buferLength++;
     }
-    $buffer .= "\n";
-
-    # Push buffer to socket
-    syswrite($socket, $buffer, $buferLength);    
+    # Push buffer to socket with \n and buffer lenght + 1
+    $buffer .= "\n", $buferLength++, syswrite($socket, $buffer, $buferLength);    
   }
 
   # Logout need if logging in before (in fetchData() sub) completed
-  logMessage("[*] Logout from UniFi controller", DEBUG_LOW), $gC->{'ua'}->get($gC->{'logout_path'}) if (defined($gC->{'ua'}));
+  logMessage("[*]\t Logout from UniFi controller", DEBUG_LOW);
+  $gC->{'ua'}->get($gC->{'logout_path'}) if (defined($gC->{'ua'}));
+  logMessage("[-] handleConnection() finished", DEBUG_LOW);
   return TRUE;
 }
     
@@ -473,7 +476,7 @@ sub getMetric {
 
     logMessage("[+] getMetric() started", DEBUG_LOW);
     logMessage("[>]\t args: key: '$_[2]', action: '$_[0]->{'action'}'", DEBUG_LOW);
-#    logMessage("[>]\t incoming object info:'\n\t".(Dumper $_[1]), DEBUG_HIGH);
+    logMessage("[>]\t incoming object info:'\n\t".(Data::Dumper::Dumper $_[1]), DEBUG_HIGH) if ($globalConfig->{'debuglevel'} >= DEBUG_HIGH);
 
     # split key to parts for analyze
     my @keyParts=split (/[.]/, $_[2]);
@@ -507,10 +510,9 @@ sub getMetric {
     # If user want numeric values of result (SUM, COUNT, etc) - init variable as numeric
     $_[3] = (ACT_GET eq $_[0]->{'action'}) ? '' : 0;
     # Some special actions is processed
-#    my $pFamilyAction = (ACT_PSUM eq $_[0]->{'action'} || ACT_PCOUNT eq $_[0]->{'action'}) ? TRUE : FALSE;
 
    ###########################################     Main loop    ###########################################################
-   while (1) {
+   while (TRUE) {
 
         ########  Save/Restore block #######
 
@@ -618,7 +620,7 @@ sub getMetric {
               # Key is point to final subkey or we can dive more?
               if (!defined($keyParts[$keyPos+1])) {
                  # Searched item is found, take it's value
-                 # all filters is passed? if true - ($nFilters - $filterPassed) is 0
+                 # all filters is passed? ($nFilters - $filterPassed) must be 0 if true
                  # current value allowed to action when all filters passed
                  $actCurrentValue  = (($nFilters - $filterPassed) == 0) ? TRUE : FALSE;
                  #print "$currentRoot->{$keyParts[$keyPos]->{'e'}}\n";
@@ -680,7 +682,7 @@ sub fetchData {
 
    $objPath  = $_[0]->{'api_path'} . ($_[0]->{'fetch_rules'}->{$_[2]}->{'excl_sitename'} ? '' : "/s/$_[1]") . "/$_[0]->{'fetch_rules'}->{$_[2]}->{'path'}";
    # if MAC is given with command-line option -  RapidWay for Controller v4 is allowed, short_way is tested for non-device objects workaround
-   $objPath .= "/$_[0]->{'mac'}" if (($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_4) && $_[0]->{'mac'} && $_[0]->{'fetch_rules'}->{$_[2]}->{'short_way'});
+   $objPath .= "/$_[0]->{'mac'}" if ($_[0]->{'fetch_rules'}->{$_[2]}->{'short_way'} && $_[0]->{'mac'});
    logMessage("[.]\t\t Object path: '$objPath'", DEBUG_MID);
 
    ################################################## Take JSON  ##################################################
@@ -765,8 +767,7 @@ sub fetchData {
      }
    } # for each jsonData
 
-#   logMessage("[<]\t Fetched data:\n\t".(Dumper $_[4]), DEBUG_HIGH);
-   
+   logMessage("[<]\t Fetched data:\n\t".(Data::Dumper::Dumper $_[4]), DEBUG_HIGH) if ($globalConfig->{'debuglevel'} >= DEBUG_HIGH);
    logMessage("[-] fetchData() finished", DEBUG_LOW);
    return TRUE;
 }
@@ -802,18 +803,17 @@ sub fetchDataFromController {
         # logging in
         logMessage("[.]\t\tTry to log in into controller...", DEBUG_LOW);
         $response=$_[0]->{'ua'}->post($_[0]->{'login_path'}, 'Content_type' => "application/$_[0]->{'login_type'}",'Content' => $_[0]->{'login_data'});
-#        logMessage("[>>]\t\t HTTP respose:\n\t".(Dumper $response), DEBUG_HIGH);
-        my $rc=$response->code;
+        logMessage("[>>]\t\t HTTP respose:\n\t".(Data::Dumper::Dumper $response), DEBUG_HIGH) if ($globalConfig->{'debuglevel'} >= DEBUG_HIGH);
         $errorCode=$response->is_error;
         if ($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_4) {
            # v4 return 'Bad request' (code 400) on wrong auth
            # v4 return 'OK' (code 200) on success login
-           ($rc eq '400') and $errorCode=FETCH_LOGIN_ERROR;
+           ($response->code eq '400') and $errorCode=FETCH_LOGIN_ERROR;
         } elsif (($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_3) || ($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_2)) {
            # v3 return 'OK' (code 200) on wrong auth
-           ($rc eq '200') and $errorCode=FETCH_LOGIN_ERROR;
+           ($response->code eq '200') and $errorCode=FETCH_LOGIN_ERROR;
            # v3 return 'Redirect' (code 302) on success login and must die only if code<>302
-           ($rc eq '302') and $errorCode=FETCH_NO_ERROR;
+           ($response->code eq '302') and $errorCode=FETCH_NO_ERROR;
         }
     }
     ($errorCode == FETCH_LOGIN_ERROR) and logMessage("[!] Login error - wrong auth data, stop", DEBUG_LOW), return FALSE;
@@ -833,15 +833,16 @@ sub fetchDataFromController {
 
    ($response->is_error == FETCH_OTHER_ERROR) and logMessage("[!] Comminication error while fetch data from controller: '".($response->status_line)."', stop.\n", DEBUG_LOW), return FALSE;
    
-   # logMessage("[>>]\t\t Fetched data:\n\t".(Dumper $response->decoded_content), DEBUG_HIGH);
+   logMessage("[>>]\t\t Fetched data:\n\t".(Data::Dumper::Dumper $response->decoded_content), DEBUG_HIGH) if ($globalConfig->{'debuglevel'} >= DEBUG_HIGH);;
 #   $_[2]=$_[0]->{'jsonxs'}->decode($response->decoded_content);
+   print Data::Dumper::Dumper $response->content_ref();
    $_[2]=$_[0]->{'jsonxs'}->decode(${$response->content_ref()});
 
 
    # server answer is ok ?
    (($_[2]->{'meta'}->{'rc'} ne 'ok') && (defined($_[2]->{'meta'}->{'msg'}))) and  logMessage("[!] UniFi controller reply is not OK: '$_[2]->{'meta'}->{'msg'}', stop.", DEBUG_LOW);
    $_[2]=$_[2]->{'data'};
-#   logMessage("[<]\t decoded data:\n\t".(Dumper $_[2]), DEBUG_HIGH);
+   logMessage("[<]\t decoded data:\n\t".(Data::Dumper::Dumper $_[2]), DEBUG_HIGH) if ($globalConfig->{'debuglevel'} >= DEBUG_HIGH);
    $_[0]->{'downloaded'}=TRUE;
    return TRUE;
 }
@@ -859,7 +860,8 @@ sub addToLLD {
 
     # remap object type: add key to type for right select and add macroses
     my $givenObjType  = $_[0]->{'objecttype'}.($_[0]->{'key'} ? "_$_[0]->{'key'}" : '');
-    my $parentObjType = $_[1]->{'type'}, my $parentObjData = $_[1]->{'data'} if (defined($_[1]));
+    my $parentObjType = $_[1]->{'type'}, my $parentObjData;
+    $parentObjData = $_[1]->{'data'} if (defined($_[1]));
 
     logMessage("[+] addToLLD() started", DEBUG_LOW); logMessage("[>]\t args: object type: '$_[0]->{'objecttype'}'", DEBUG_MID); 
 #    logMessage("[>]\t       site name: '$_[1]->{'name'}'", DEBUG_MID) if ($_[1]->{'name'});
@@ -921,13 +923,13 @@ sub addToLLD {
          $_[3][$o]->{'{#MEDIA}'}     = "$_->{'media'}";
          $_[3][$o]->{'{#UP}'}        = "$_->{'up'}";
          $_[3][$o]->{'{#PORTPOE}'}   = "$_->{'port_poe'}";
-      } elsif ($givenObjType eq OBJ_HEALTH) {
+      } elsif (OBJ_HEALTH eq $givenObjType) {
          $_[3][$o]->{'{#SUBSYSTEM}'} = $_->{'subsystem'};
          $_[3][$o]->{'{#STATUS}'}    = $_->{'status'};
-      } elsif ($givenObjType eq OBJ_NETWORK) {
+      } elsif (OBJ_NETWORK eq $givenObjType) {
          $_[3][$o]->{'{#PURPOSE}'} = $_->{'purpose'};
          $_[3][$o]->{'{#NETWORKGROUP}'} = $_->{'networkgroup'};
-      } elsif ($givenObjType eq OBJ_EXTENSION) {
+      } elsif (OBJ_EXTENSION eq $givenObjType) {
          $_[3][$o]->{'{#EXTENSION}'} = $_->{'extension'};
 #         $_[3][$o]->{'{#TARGET}'} = $_->{'target'};
 #         ;
@@ -938,9 +940,18 @@ sub addToLLD {
 #      } elsif ($givenObjType eq OBJ_USG || $givenObjType eq OBJ_USW) {
 #        ;
       }
+
+      if (OBJ_ALLUSER eq $givenObjType) {
+          delete $_[3][$o]->{'{#SITEID}'};
+          delete $_[3][$o]->{'{#SITENAME}'};
+          delete $_[3][$o]->{'{#SITEDESC}'};
+          delete $_[3][$o]->{'{#MAC}'};
+          delete $_[3][$o]->{'{#OUI}'};
+          delete $_[3][$o]->{'{#NAME}'};
+      }
      $o++;
     }
-#    logMessage("[<]\t Generated LLD piece:\n\t".(Dumper $_[3]), DEBUG_HIGH);
+    logMessage("[<]\t Generated LLD piece:\n\t".(Data::Dumper::Dumper $_[3]), DEBUG_HIGH) if ($globalConfig->{'debuglevel'} >= DEBUG_HIGH);
     logMessage("[-] addToLLD() finished", DEBUG_LOW);
     return TRUE;
 }
@@ -981,87 +992,81 @@ my   $configDefs = {
       
     };
 
-    my   $configVals, my $k, my $v;
-    if (open(my $fh, $configFile)) {
-       # Read values of globala params from config file
-       while(<$fh>){
-         # skip comments
-         $_ =~ /^($|#)/ && next;
-         # skip empty lines
-         chomp or next;
-         # ' key =   value ' => 'key' & 'value'
-         ($k, $v) = $_ =~ m/^\s*(\w+)\s*=\s*(\S*)\s*/;
-         $configVals->{lc($k)}=$v;
-      }
-      close($fh);
-    }
+    my $configVals;
+    if (open(my $fh, "<", $configFile)) {
+       # Read values of global params from config file
+       while (<$fh>) {
+          # $1 is key, $2 is value if regexp matched - readed string is 'key=val'
+          $configVals->{lc($1)}=$2 if (m/^\s*(\w+)\s*=\s*(\S*)\s*/);
+       }
+       close($fh);
+    } 
 
     # copy readed values to global config and cast its if need    
     for (keys $configDefs) {
-        $globalConfig->{$_} = $configVals->{$_} ? $configVals->{$_} : $configDefs->{$_}[1];
+        # $globalConfig->{$_} = $configVals->{$_} ? $configVals->{$_} : $configDefs->{$_}[1];
+        $globalConfig->{$_} = $configVals->{$_} // $configDefs->{$_}[1];
         $globalConfig->{$_} +=0 if (TYPE_NUMBER  == $configDefs->{$_}[0]);
     }
+
+#   print Dumper $globalConfig;
 
    (-e $globalConfig->{'cachedir'}) or die "[!] Cache dir not found: '$globalConfig->{'cachedir'}'\n";
    (-d $globalConfig->{'cachedir'}) or die "[!] Cache dir not dir: '$globalConfig->{'cachedir'}'\n";
 
    # Sitename which replaced {'sitename'} if '-s' option not used
    $globalConfig->{'default_sitename'} = 'default';
-   $globalConfig->{'api_path'}      = "$globalConfig->{'unifilocation'}/api";
-   $globalConfig->{'login_path'}    = "$globalConfig->{'unifilocation'}/login";
-   $globalConfig->{'logout_path'}   = "$globalConfig->{'unifilocation'}/logout";
-   $globalConfig->{'login_data'}    = "username=$globalConfig->{'unifiuser'}&password=$globalConfig->{'unifipass'}&login=login";
-   $globalConfig->{'login_type'}    = 'x-www-form-urlencoded';
+   $globalConfig->{'api_path'}         = "$globalConfig->{'unifilocation'}/api";
+   $globalConfig->{'login_path'}       = "$globalConfig->{'unifilocation'}/login";
+   $globalConfig->{'logout_path'}      = "$globalConfig->{'unifilocation'}/logout";
+   $globalConfig->{'login_data'}       = "username=$globalConfig->{'unifiuser'}&password=$globalConfig->{'unifipass'}&login=login";
+   $globalConfig->{'login_type'}       = 'x-www-form-urlencoded';
 
     # Set controller version specific data
-    if ($globalConfig->{'unifiversion'} eq CONTROLLER_VERSION_4) {
-       $globalConfig->{'login_path'}    = "$globalConfig->{'unifilocation'}/api/login";
-       $globalConfig->{'login_data'} = "{\"username\":\"$globalConfig->{'unifiuser'}\",\"password\":\"$globalConfig->{'unifipass'}\"}",
-       $globalConfig->{'login_type'} = 'json',
+    if (CONTROLLER_VERSION_4 eq $globalConfig->{'unifiversion'}) {
+       $globalConfig->{'login_path'}  = "$globalConfig->{'unifilocation'}/api/login";
+       $globalConfig->{'login_data'}  = "{\"username\":\"$globalConfig->{'unifiuser'}\",\"password\":\"$globalConfig->{'unifipass'}\"}",
+       $globalConfig->{'login_type'}  = 'json',
        # Data fetch rules.
        # BY_GET mean that data fetched by HTTP GET from .../api/[s/<site>/]{'path'} operation.
        #    [s/<site>/] must be excluded from path if {'excl_sitename'} is defined
        # BY_CMD say that data fetched by HTTP POST {'cmd'} to .../api/[s/<site>/]{'path'}
        #
        $globalConfig->{'fetch_rules'} = {
-       # `&` let use value of constant, otherwise we have 'OBJ_UAP' => {...} instead 'uap' => {...}
-       #     &OBJ_HEALTH => {'method' => BY_GET, 'path' => 'stat/health'},
-          &OBJ_SITE      => {'method' => BY_GET, 'path' => 'self/sites', 'excl_sitename' => TRUE},
-          &OBJ_UAP       => {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
-          &OBJ_UPH       => {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
-          &OBJ_USG       => {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
-          &OBJ_USW       => {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
-          &OBJ_SYSINFO   => {'method' => BY_GET, 'path' => 'stat/sysinfo'},
-          &OBJ_USER      => {'method' => BY_GET, 'path' => 'stat/sta'},
-          &OBJ_ALLUSER   => {'method' => BY_GET, 'path' => 'stat/alluser'},
-          &OBJ_HEALTH    => {'method' => BY_GET, 'path' => 'stat/health'},
-          &OBJ_NETWORK   => {'method' => BY_GET, 'path' => 'list/networkconf'},
-          &OBJ_EXTENSION => {'method' => BY_GET, 'path' => 'list/extension'},
-          &OBJ_NUMBER    => {'method' => BY_GET, 'path' => 'list/number'},
-          &OBJ_USERGROUP => {'method' => BY_GET, 'path' => 'list/usergroup'},
-          &OBJ_SETTING   => {'method' => BY_GET, 'path' => 'get/setting'},
-          &OBJ_WLAN      => {'method' => BY_GET, 'path' => 'list/wlanconf'},
-          &OBJ_USW_PORT_TABLE => {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
-          &OBJ_UAP_VAP_TABLE => {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
+          OBJ_SITE      , {'method' => BY_GET, 'path' => 'self/sites', 'excl_sitename' => TRUE},
+          OBJ_UAP       , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
+          OBJ_UPH       , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
+          OBJ_USG       , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
+          OBJ_USW       , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
+          OBJ_SYSINFO   , {'method' => BY_GET, 'path' => 'stat/sysinfo'},
+          OBJ_USER      , {'method' => BY_GET, 'path' => 'stat/sta'},
+          OBJ_ALLUSER   , {'method' => BY_GET, 'path' => 'stat/alluser'},
+          OBJ_HEALTH    , {'method' => BY_GET, 'path' => 'stat/health'},
+          OBJ_NETWORK   , {'method' => BY_GET, 'path' => 'list/networkconf'},
+          OBJ_EXTENSION , {'method' => BY_GET, 'path' => 'list/extension'},
+          OBJ_NUMBER    , {'method' => BY_GET, 'path' => 'list/number'},
+          OBJ_USERGROUP , {'method' => BY_GET, 'path' => 'list/usergroup'},
+          OBJ_SETTING   , {'method' => BY_GET, 'path' => 'get/setting'},
+          OBJ_WLAN      , {'method' => BY_GET, 'path' => 'list/wlanconf'},
+          OBJ_USW_PORT_TABLE , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
+          OBJ_UAP_VAP_TABLE  , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
        };
-    } elsif ($globalConfig->{'unifiversion'} eq CONTROLLER_VERSION_3) {
+    } elsif (CONTROLLER_VERSION_3 eq $globalConfig->{'unifiversion'}) {
        $globalConfig->{'fetch_rules'} = {
-          # `&` let use value of constant, otherwise we have 'OBJ_UAP' => {...} instead 'uap' => {...}
-          &OBJ_SITE => {'method' => BY_CMD, 'path' => 'cmd/sitemgr', 'cmd' => '{"cmd":"get-sites"}'},
-          #&OBJ_SYSINFO => {'method' => BY_GET, 'path' => 'stat/sysinfo'},
-          &OBJ_UAP  => {'method' => BY_GET, 'path' => 'stat/device'},
-          &OBJ_USER => {'method' => BY_GET, 'path' => 'stat/sta'},
-          &OBJ_WLAN => {'method' => BY_GET, 'path' => 'list/wlanconf'}
+          OBJ_SITE      , {'method' => BY_CMD, 'path' => 'cmd/sitemgr', 'cmd' => '{"cmd":"get-sites"}'},
+          #OBJ_SYSINFO   , {'method' => BY_GET, 'path' => 'stat/sysinfo'},
+          OBJ_UAP       , {'method' => BY_GET, 'path' => 'stat/device'},
+          OBJ_USER      , {'method' => BY_GET, 'path' => 'stat/sta'},
+          OBJ_WLAN      , {'method' => BY_GET, 'path' => 'list/wlanconf'}
        };
-    } elsif ($globalConfig->{'unifiversion'} eq CONTROLLER_VERSION_2) {
+    } elsif (CONTROLLER_VERSION_2 eq $globalConfig->{'unifiversion'}) {
        $globalConfig->{'fetch_rules'} = {
-       # `&` let use value of constant, otherwise we have 'OBJ_UAP' => {...} instead 'uap' => {...}
-          &OBJ_UAP  => {'method' => BY_GET, 'path' => 'stat/device', 'excl_sitename' => TRUE},
-          &OBJ_WLAN => {'method' => BY_GET, 'path' => 'list/wlanconf', 'excl_sitename' => TRUE},
-          &OBJ_USER => {'method' => BY_GET, 'path' => 'stat/sta', 'excl_sitename' => TRUE}
+          OBJ_UAP       , {'method' => BY_GET, 'path' => 'stat/device', 'excl_sitename' => TRUE},
+          OBJ_WLAN      , {'method' => BY_GET, 'path' => 'list/wlanconf', 'excl_sitename' => TRUE},
+          OBJ_USER      , {'method' => BY_GET, 'path' => 'stat/sta', 'excl_sitename' => TRUE}
        };
     } else {
-       return "[!] Version of controller is unknown: '$globalConfig->{'unifiversion'}, stop";
+       die "[!] Version of controller is unknown: '$globalConfig->{'unifiversion'}, stop\n";
     }
-   return TRUE;
+    TRUE;
 }
