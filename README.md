@@ -3,7 +3,7 @@ Actual release is v1.2.0-rc. Installable package is not exist, DYI-ers must expl
 
 Whatsnew: [Russian](https://github.com/zbx-sadman/unifi_proxy/blob/master/experimental/README.md)
 
-- [usr/local/sbin/unifi_proxy.pl](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/master/usr/local/sbin/unifi_proxy.pl) - UniFi Proxy executable file;
+- [usr/local/sbin/unifi_proxy.pl](https://github.com/zbx-sadman/unifi_proxy/blob/master/usr/local/sbin/unifi_proxy.pl) - UniFi Proxy executable file;
 - [etc/unifi_proxy.conf](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/master/etc/unifi_proxy/unifi_proxy.conf) - UniFi Proxy config file;
 - [etc/init.d/unifi_proxy](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/master/etc/init.d/unifi_proxy) - system start-up service script;
 - [src/unifi_proxy_get.c](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/master/src/unifi_proxy_get.c) - _unifi_proxy_get_ utility source code;
