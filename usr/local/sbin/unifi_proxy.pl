@@ -18,8 +18,7 @@ use IO::Socket::SSL ();
 use Data::Dumper ();
 
 use constant {
-#     CONFIG_FILE_DEFAULT => '/etc/unifi_proxy/unifi_proxy.conf',
-     CONFIG_FILE_DEFAULT => './unifi_proxy.conf',
+     CONFIG_FILE_DEFAULT => '/etc/unifi_proxy/unifi_proxy.conf',
      TOOL_HOMEPAGE => 'https://github.com/zbx-sadman/unifi_proxy',
      TOOL_NAME => 'UniFi Proxy',
      TOOL_VERSION => '1.2.0',
