@@ -1,7 +1,5 @@
 ## UniFi Proxy
-Actual release is v1.2.0-rc. Installable package is not exist, DYI-ers must explore _/etc_ , _/usr/local_ and _/src_ dirs and get that what they need:
-
-Whatsnew: [Russian] (https://github.com/zbx-sadman/unifi_proxy/blob/master/experimental/README.md)
+Actual release is v1.1.0-rc. Installable package is not exist, DYI-ers must explore _/etc_ , _/usr/local_ and _/src_ dirs and get that what they need:
 
 - [usr/local/sbin/unifi_proxy.pl](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/master/usr/local/sbin/unifi_proxy.pl) - UniFi Proxy executable file;
 - [etc/unifi_proxy.conf](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/master/etc/unifi_proxy/unifi_proxy.conf) - UniFi Proxy config file;
@@ -18,6 +16,8 @@ It is a TCP server written in Perl, which helps deliver to the monitoring system
 ![Zabbix: connected clients](http://community.ubnt.com/t5/image/serverpage/image-id/53219iB1CA79D24EFB2BEB/image-size/original)
 
 If you have a question about Proxy, please, refer to [UniFi Proxy Russian Guide] (https://github.com/zbx-sadman/unifi_proxy/wiki/UniFi-Proxy-Guide-in-Russian) or [UniFi Proxy English Guide] (https://github.com/zbx-sadman/unifi_proxy/wiki/UniFi-Proxy-Guide-in-English).
+
+v1.1.0 whatsnew: [Russian] (https://github.com/zbx-sadman/unifi_proxy/blob/master/experimental/README.md)
 
 If u have an problem, you can search the existing closed or open [issues](https://github.com/zbx-sadman/unifi_proxy/issues). 
 
