@@ -435,7 +435,7 @@ sub handleConnection {
     # Form JSON from result for 'discovery' action
     if (ACT_DISCOVERY eq $gC->{'action'}) {
        logMessage("[.] Make LLD JSON", DEBUG_MID);
-       defined($lldPiece) or logMessage("[!] No data found for object $gC->{'objecttype'} (may be wrong site name), stop", DEBUG_MID), return FALSE;
+       defined($lldPiece) or logMessage("[!] No data found for object $gC->{'objecttype'} (may be wrong site name), stop", DEBUG_MID);
        # link LLD to {'data'} key
        undef $buffer,
        $buffer->{'data'} = $lldPiece,
