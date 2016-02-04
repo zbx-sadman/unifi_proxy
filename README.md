@@ -4,12 +4,12 @@ Actual release is v1.2.0-rc. Installable package is not exist, DYI-ers must expl
 Whatsnew: [Russian](https://github.com/zbx-sadman/unifi_proxy/blob/master/experimental/README.md)
 
 - [usr/local/sbin/unifi_proxy.pl](https://github.com/zbx-sadman/unifi_proxy/blob/master/usr/local/sbin/unifi_proxy.pl) - UniFi Proxy executable file;
-- [etc/unifi_proxy.conf](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/master/etc/unifi_proxy/unifi_proxy.conf) - UniFi Proxy config file;
-- [etc/init.d/unifi_proxy](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/master/etc/init.d/unifi_proxy) - system start-up service script;
-- [src/unifi_proxy_get.c](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/master/src/unifi_proxy_get.c) - _unifi_proxy_get_ utility source code;
-- [etc/zabbix/zbx_unifi.conf](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/master/etc/zabbix/zbx_unifi.conf) - plugged to _zabbix_agentd.conf_ config file;
-- [src/zbx_unifi/unifi.c](https://github.com/zbx-sadman/unifi_proxy/tree/master/src/zbx_unifi) - _unifi.so_ Zabbix loadable module source code;
-- [usr/local/lib/unifi.conf](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/master/usr/local/lib/zabbix/unifi.conf) - config file for _unifi.so_.
+- [etc/unifi_proxy.conf](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/blob/master/etc/unifi_proxy/unifi_proxy.conf) - UniFi Proxy config file;
+- [etc/init.d/unifi_proxy](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/blob/master/etc/init.d/unifi_proxy) - system start-up service script;
+- [src/unifi_proxy_get.c](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/blob/master/src/unifi_proxy_get.c) - _unifi_proxy_get_ utility source code;
+- [etc/zabbix/zbx_unifi.conf](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/blob/master/etc/zabbix/zbx_unifi.conf) - plugged to _zabbix_agentd.conf_ config file;
+- [src/zbx_unifi/unifi.c](https://github.com/zbx-sadman/unifi_proxy/tree/blob/master/src/zbx_unifi) - _unifi.so_ Zabbix loadable module source code;
+- [usr/local/lib/unifi.conf](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/blob/master/usr/local/lib/zabbix/unifi.conf) - config file for _unifi.so_.
 
 Command-line version of UniFi Proxy is [UniFi Miner](https://github.com/zbx-sadman/unifi_miner)
 
@@ -23,7 +23,7 @@ v1.1.0 whatsnew: [Russian] (https://github.com/zbx-sadman/unifi_proxy/blob/maste
 
 If u have an problem, you can search the existing closed or open [issues](https://github.com/zbx-sadman/unifi_proxy/issues). 
 
-Templates for Zabbix [here](https://github.com/zbx-sadman/unifi_proxy/tree/master/Zabbix_Templates)
+Templates for Zabbix [here](https://github.com/zbx-sadman/unifi_proxy/tree/blob/master/Zabbix_Templates)
 
 Response time compare table (6 UAPs installation):
 
