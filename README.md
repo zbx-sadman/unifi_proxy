@@ -1,7 +1,7 @@
 ## UniFi Proxy
-Actual release is v1.1.0-rc. Installable package is not exist, DYI-ers must explore _/etc_ , _/usr/local_ and _/src_ dirs and get that what they need:
+Actual release is v1.2.0-rc. Installable package is not exist, DYI-ers must explore _/etc_ , _/usr/local_ and _/src_ dirs and get that what they need:
 
-v1.1.0 whatsnew: [Russian] (https://github.com/zbx-sadman/unifi_proxy/blob/master/experimental/README.md)
+Whatsnew: [Russian] (https://github.com/zbx-sadman/unifi_proxy/blob/master/experimental/README.md)
 
 - [usr/local/sbin/unifi_proxy.pl](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/master/usr/local/sbin/unifi_proxy.pl) - UniFi Proxy executable file;
 - [etc/unifi_proxy.conf](https://raw.githubusercontent.com/zbx-sadman/unifi_proxy/master/etc/unifi_proxy/unifi_proxy.conf) - UniFi Proxy config file;

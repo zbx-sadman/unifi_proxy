@@ -18,18 +18,20 @@ use IO::Socket::SSL ();
 use Data::Dumper ();
 
 use constant {
-     CONFIG_FILE_DEFAULT => '/etc/unifi_proxy/unifi_proxy.conf',
-#     CONFIG_FILE_DEFAULT => './unifi_proxy.conf',
+#     CONFIG_FILE_DEFAULT => '/etc/unifi_proxy/unifi_proxy.conf',
+     CONFIG_FILE_DEFAULT => './unifi_proxy.conf',
      TOOL_HOMEPAGE => 'https://github.com/zbx-sadman/unifi_proxy',
      TOOL_NAME => 'UniFi Proxy',
-     TOOL_VERSION => '1.1.0',
+     TOOL_VERSION => '1.2.0',
 
      # *** Actions ***
+     ACT_AVGCOUNT => 'avgcount',
+     ACT_AVGSUM => 'avgsum',
      ACT_GET => 'get',
      ACT_COUNT => 'count',
      ACT_DISCOVERY => 'discovery',
-     ACT_PCOUNT => 'pcount',
-     ACT_PSUM => 'psum',
+     ACT_PERCOUNT => 'percount',
+     ACT_PERSUM => 'persum',
      ACT_SUM => 'sum',
 
      # *** Controller versions ***
@@ -300,8 +302,7 @@ sub handleConnection {
        $buffer = undef;
 
        # fast validate object type  
-#       $gC->{'objecttype'}        = $opt_o // $_[0]->{'objecttype'};
-       $gC->{'objecttype'}       = $opt_o ? $opt_o : $_[0]->{'objecttype'};
+       $gC->{'objecttype'}        = $opt_o ? $opt_o : $_[0]->{'objecttype'};
        unless ($gC->{'fetch_rules'}->{$gC->{'objecttype'}}) {
            # $buffer will processed in 'continue' block
            $buffer = "[!] No object type $gC->{'objecttype'} supported";
@@ -313,7 +314,7 @@ sub handleConnection {
    
        # Rewrite default values (taken from globalConfig) by command line arguments
        $gC->{'action'}            = $opt_a ? $opt_a : $_[0]->{'action'};
-       $gC->{'ispact'}            = (ACT_PSUM eq $gC->{'action'} || ACT_PCOUNT eq $gC->{'action'}) ? TRUE : FALSE;
+       $gC->{'cnttailvals'}       = (ACT_AVGCOUNT eq $gC->{'action'} || ACT_AVGSUM eq $gC->{'action'} || ACT_PERCOUNT eq $gC->{'action'} || ACT_PERSUM eq $gC->{'action'}) ? TRUE : FALSE;
 
        $gC->{'key'}               = $opt_k ? $opt_k : '';
 
@@ -371,7 +372,7 @@ sub handleConnection {
          fetchData($gC, $siteObj->{'name'}, $gC->{'objecttype'}, $gC->{'id'}, $objList) or logMessage("[!] No data fetched from site '$siteObj->{'name'}', stop", DEBUG_MID), return FALSE;
       }
 
-      logMessage("[.]\t\t Objects list:\n\t".(Data::Dumper::Dumper $objList), DEBUG_HIGH) if ($globalConfig->{'debuglevel'} >= DEBUG_HIGH);
+      logMessage("[.]\t\t Objects list:\n\t".(Data::Dumper::Dumper $objList), DEBUG_HIGH) if (DEBUG_HIGH <= $globalConfig->{'debuglevel'});
       # check requested key
       if (! $gC->{'key'}) {
          # No key given - user need to discovery objects. 
@@ -430,7 +431,7 @@ sub handleConnection {
     ################################################## Final stage of main loop  ##################################################
   } continue { 
     # Made rounded number from result of 'percent-count', 'percent-sum' actions
-    $buffer = sprintf("%.".ROUND_NUMBER."f", ((0 == @{$siteList}) ? 0 : ($buffer/@{$siteList}))) if ($gC->{'ispact'});
+    $buffer = sprintf("%.".ROUND_NUMBER."f", ((0 == @{$siteList}) ? 0 : ($buffer/@{$siteList}))) if ($gC->{'cnttailvals'});
 
     # Form JSON from result for 'discovery' action
     if (ACT_DISCOVERY eq $gC->{'action'}) {
@@ -464,16 +465,16 @@ sub handleConnection {
     
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 #
-#  Recursively go through the key and take/form value of metric
+#  Go through the JSON tree and take/form value of metric
 #
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 sub getMetric {
     my $currentRoot = $_[1], my $state = ST_SAVE, my $stack, my $arrIdx, my $arrSize, my $keyPos = -1, my $nFilters = 0, my $stackPos = -1, my $allValues = 0,
-    my $keepKeyPos = FALSE, my $filterPassed = 0, my $isLastFilter = FALSE, my $actCurrentValue, my $i;
-
+    my $keepKeyPos = FALSE, my $filterPassed = 0, my $isLastFilter = FALSE, my $actCurrentValue, my $i, my $processedKeysNum = 0;
+  
     logMessage("[+] getMetric() started", DEBUG_LOW);
     logMessage("[>]\t args: key: '$_[2]', action: '$_[0]->{'action'}'", DEBUG_LOW);
-    logMessage("[>]\t incoming object info:'\n\t".(Data::Dumper::Dumper $_[1]), DEBUG_HIGH) if ($globalConfig->{'debuglevel'} >= DEBUG_HIGH);
+    logMessage("[>]\t incoming object info:'\n\t".(Data::Dumper::Dumper $_[1]), DEBUG_HIGH) if (DEBUG_HIGH <= $globalConfig->{'debuglevel'});
 
     # split key to parts for analyze
     my @keyParts = split (/[.]/, $_[2]);
@@ -523,7 +524,7 @@ sub getMetric {
            # Take array size, if current root point to 'ARRAY' object. Otherwise (point to 'HASH' or other) - size is -1
            $arrSize = 'ARRAY' eq ref($currentRoot) ? @{$currentRoot} : -1;
            # -1 - $arrIdx, will be corrected later by routine
-           @{$stack}[$stackPos]=[$currentRoot, -1, $arrSize, $keyPos, $filterPassed];
+           @{$stack}[$stackPos] = [$currentRoot, -1, $arrSize, $keyPos, $filterPassed];
            $state = FALSE; $keepKeyPos = FALSE;
         }
 
@@ -602,7 +603,7 @@ sub getMetric {
               } else {
                 # Object is bad
                 # If P* actions is used - need to count all values that matched to all key-filters or unmatched only last key-filter
-                $state = ST_REST, next if (!$_[0]->{'ispact'} && $isLastFilter);
+                $state = ST_REST, next if (!$_[0]->{'cnttailvals'} && $isLastFilter);
               }
               # just skip key-filter after analyze
               $keyPos++;
@@ -620,25 +621,26 @@ sub getMetric {
                  # all filters is passed? ($nFilters - $filterPassed) must be 0 if true
                  # current value allowed to action when all filters passed
                  $actCurrentValue  = (($nFilters - $filterPassed) == 0) ? TRUE : FALSE;
-                 #print "$currentRoot->{$keyParts[$keyPos]->{'e'}}\n";
+
+                 $processedKeysNum++ if ($actCurrentValue);
                  # do action
                  if (ACT_GET eq $_[0]->{'action'}) {
                     # GET value and exit from search loop
                     $_[3] = $currentRoot->{$keyParts[$keyPos]->{'e'}}, last if ($actCurrentValue);
-                 } elsif (ACT_COUNT eq $_[0]->{'action'} || ACT_PCOUNT eq $_[0]->{'action'})  {
+                 } elsif (ACT_COUNT eq $_[0]->{'action'} || ACT_AVGCOUNT eq $_[0]->{'action'} || ACT_PERCOUNT eq $_[0]->{'action'})  {
                     # COUNT values
-                    $allValues++ if ($_[0]->{'ispact'});
+                    $allValues++;
                     $_[3]++      if ($actCurrentValue);
-                 } elsif (ACT_SUM eq $_[0]->{'action'} || ACT_PSUM eq $_[0]->{'action'}) {
+                 } elsif (ACT_SUM eq $_[0]->{'action'} || ACT_AVGSUM eq $_[0]->{'action'} || ACT_PERSUM eq $_[0]->{'action'}) {
                     # SUM values
-                    $allValues += $currentRoot->{$keyParts[$keyPos]->{'e'}} if ($_[0]->{'ispact'});
+                    $allValues += $currentRoot->{$keyParts[$keyPos]->{'e'}};
                     $_[3] += $currentRoot->{$keyParts[$keyPos]->{'e'}}      if ($actCurrentValue);
                  }
                  # Final subkey detected. Go closer to JSON root.
                  $state = ST_REST; next;
               } else {
                 # Not final subkey - go deeper to JSON structure by root changing
-                $currentRoot=$currentRoot->{$keyParts[$keyPos]->{'e'}};
+                $currentRoot = $currentRoot->{$keyParts[$keyPos]->{'e'}};
                 $state = ST_SAVE; next;
               } # if ($ll)
            } else {
@@ -650,8 +652,11 @@ sub getMetric {
     ###########################################    End of main loop    ###########################################################
 
  # User want to get percent of matched items: all processed values is 100%.
- # Proceseed values placed into item, that full matched to filter-key or unmatched _only_ with last filter expression.
- if ($_[0]->{'ispact'}) { $_[3] = (0 == $allValues) ? '0' : sprintf("%.".ROUND_NUMBER."f", $_[3]/($allValues/100)); }
+ # Use values placed in item, that was full matched to filter-key or unmatched _only_ with last filter expression.
+ if (ACT_PERCOUNT eq $_[0]->{'action'} || ACT_PERSUM eq $_[0]->{'action'}) { $_[3] = (0 == $allValues) ? '0' : sprintf("%.".ROUND_NUMBER."f", $_[3]/($allValues/100)); }
+
+ # User want to get average value of matched items.
+ if (ACT_AVGCOUNT eq $_[0]->{'action'} || ACT_AVGSUM eq $_[0]->{'action'}) { $_[3] = (0 == $_[3] || 0 == $processedKeysNum) ? '0' : sprintf("%.".ROUND_NUMBER."f", $_[3]/$processedKeysNum); }
 
  logMessage("[<] result: ($_[3])", DEBUG_LOW) if (defined($_[3]));
  logMessage("[-] getMetric() finished ", DEBUG_LOW);
@@ -764,7 +769,7 @@ sub fetchData {
      }
    } # for each jsonData
 
-   logMessage("[<]\t Fetched data:\n\t".(Data::Dumper::Dumper $_[4]), DEBUG_HIGH) if ($globalConfig->{'debuglevel'} >= DEBUG_HIGH);
+   logMessage("[<]\t Fetched data:\n\t".(Data::Dumper::Dumper $_[4]), DEBUG_HIGH) if (DEBUG_HIGH <= $globalConfig->{'debuglevel'});
    logMessage("[-] fetchData() finished", DEBUG_LOW);
    return TRUE;
 }
@@ -791,30 +796,30 @@ sub fetchDataFromController {
    ################################################## Logging in  ##################################################
    # Check to 'still logged' state
    # ->head() not work
-   $response=$_[0]->{'ua'}->get("$_[0]->{'api_path'}/self");
+   $response = $_[0]->{'ua'}->get("$_[0]->{'api_path'}/self");
    # FETCH_OTHER_ERROR = is_error == TRUE (1), FETCH_NO_ERROR = is_error == FALSE (0)
    # FETCH_OTHER_ERROR stop work if get() haven't success && no error 401 (login required). For example - error 500 (connect refused)
-   $errorCode=$response->is_error;
+   $errorCode = $response->is_error;
    # not logged?
-   if ($response->code eq '401') {
+   if ('401' eq $response->code) {
         # logging in
         logMessage("[.]\t\tTry to log in into controller...", DEBUG_LOW);
-        $response = $_[0]->{'ua'}->post($_[0]->{'login_path'}, 'Content_type' => "application/$_[0]->{'login_type'}",'Content' => $_[0]->{'login_data'});
-        logMessage("[>>]\t\t HTTP respose:\n\t".(Data::Dumper::Dumper $response), DEBUG_HIGH) if ($globalConfig->{'debuglevel'} >= DEBUG_HIGH);
+        $response = $_[0]->{'ua'}->post($_[0]->{'login_path'}, 'Content_type' => $_[0]->{'content_type'}, 'Content' => $_[0]->{'login_data'});
+        logMessage("[>>]\t\t HTTP respose:\n\t".(Data::Dumper::Dumper $response), DEBUG_HIGH) if (DEBUG_HIGH <= $globalConfig->{'debuglevel'});
         $errorCode=$response->is_error;
-        if ($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_4) {
+        if (CONTROLLER_VERSION_4 eq $_[0]->{'unifiversion'}) {
            # v4 return 'Bad request' (code 400) on wrong auth
            # v4 return 'OK' (code 200) on success login
-           ($response->code eq '400') and $errorCode=FETCH_LOGIN_ERROR;
-        } elsif (($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_3) || ($_[0]->{'unifiversion'} eq CONTROLLER_VERSION_2)) {
+           ('400' eq $response->code) and $errorCode=FETCH_LOGIN_ERROR;
+        } elsif ( CONTROLLER_VERSION_3 eq ($_[0]->{'unifiversion'}) || (CONTROLLER_VERSION_2 eq $_[0]->{'unifiversion'})) {
            # v3 return 'OK' (code 200) on wrong auth
-           ($response->code eq '200') and $errorCode=FETCH_LOGIN_ERROR;
+           ('200' eq $response->code) and $errorCode=FETCH_LOGIN_ERROR;
            # v3 return 'Redirect' (code 302) on success login and must die only if code<>302
-           ($response->code eq '302') and $errorCode=FETCH_NO_ERROR;
+           ('302' eq $response->code) and $errorCode=FETCH_NO_ERROR;
         }
     }
     ($errorCode == FETCH_LOGIN_ERROR) and logMessage("[!] Login error - wrong auth data, stop", DEBUG_LOW), return FALSE;
-    ($errorCode == FETCH_OTHER_ERROR) and logMessage("[!] Comminication error: '".($response->status_line)."', stop.\n", DEBUG_LOW), return FALSE;
+    ($errorCode == FETCH_OTHER_ERROR) and logMessage("[!] Comminication error: '($response->status_line)', stop.\n", DEBUG_LOW), return FALSE;
 
     logMessage("[.]\t\tLogin successfull", DEBUG_LOW);
 
@@ -822,25 +827,26 @@ sub fetchDataFromController {
 
    if (BY_CMD == $fetchType) {
       logMessage("[.]\t\t Fetch data with CMD method: '$fetchCmd'", DEBUG_MID);
-      $response = $_[0]->{'ua'}->post($_[1], 'Content_type' => 'application/json', 'Content' => $fetchCmd);
+      $response = $_[0]->{'ua'}->post($_[1], 'Content_type' => $_[0]->{'content_type'}, 'Content' => $fetchCmd);
    } else { #(BY_GET == $fetchType)
       logMessage("[.]\t\t Fetch data with GET method from: '$_[1]'", DEBUG_MID);
       $response = $_[0]->{'ua'}->get($_[1]);
    }
 
-   ($response->is_error == FETCH_OTHER_ERROR) and logMessage("[!] Comminication error while fetch data from controller: '".($response->status_line)."', stop.\n", DEBUG_LOW), return FALSE;
-   
-   logMessage("[>>]\t\t Fetched data:\n\t".(Data::Dumper::Dumper $response->decoded_content), DEBUG_HIGH) if ($globalConfig->{'debuglevel'} >= DEBUG_HIGH);;
+   ($response->is_error == FETCH_OTHER_ERROR) and logMessage("[!] Comminication error while fetch data from controller: '($response->status_line)', stop.\n", DEBUG_LOW), return FALSE;
+
+   logMessage("[>>]\t\t Fetched data:\n\t".(Data::Dumper::Dumper $response->decoded_content), DEBUG_HIGH) if (DEBUG_HIGH <= $globalConfig->{'debuglevel'});;
    $_[2] = $_[0]->{'jsonxs'}->decode(${$response->content_ref()});
 
 
    # server answer is ok ?
    (($_[2]->{'meta'}->{'rc'} ne 'ok') && (defined($_[2]->{'meta'}->{'msg'}))) and  logMessage("[!] UniFi controller reply is not OK: '$_[2]->{'meta'}->{'msg'}', stop.", DEBUG_LOW);
    $_[2] = $_[2]->{'data'};
-   logMessage("[<]\t decoded data:\n\t".(Data::Dumper::Dumper $_[2]), DEBUG_HIGH) if ($globalConfig->{'debuglevel'} >= DEBUG_HIGH);
+   logMessage("[<]\t decoded data:\n\t".(Data::Dumper::Dumper $_[2]), DEBUG_HIGH) if (DEBUG_HIGH <= $globalConfig->{'debuglevel'});
    $_[0]->{'downloaded'}=TRUE;
    return TRUE;
 }
+
 
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 #
@@ -946,7 +952,7 @@ sub addToLLD {
       }
      $o++;
     }
-    logMessage("[<]\t Generated LLD piece:\n\t".(Data::Dumper::Dumper $_[3]), DEBUG_HIGH) if ($globalConfig->{'debuglevel'} >= DEBUG_HIGH);
+    logMessage("[<]\t Generated LLD piece:\n\t".(Data::Dumper::Dumper $_[3]), DEBUG_HIGH) if (DEBUG_HIGH <= $globalConfig->{'debuglevel'});
     logMessage("[-] addToLLD() finished", DEBUG_LOW);
     return TRUE;
 }
@@ -962,8 +968,8 @@ sub addToLLD {
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 sub readConf {
 
-#############
-my   $configDefs = {
+   #############
+   my   $configDefs = {
         'cachedir'                 => [TYPE_STRING, '/dev/shm'],
         'cachemaxage'              => [TYPE_NUMBER, 60],
         'debuglevel'               => [TYPE_NUMBER, FALSE],
@@ -1004,7 +1010,6 @@ my   $configDefs = {
         $globalConfig->{$_} +=0 if (TYPE_NUMBER  == $configDefs->{$_}[0]);
     }
 
-#   print Dumper $globalConfig;
 
    (-e $globalConfig->{'cachedir'}) or die "[!] Cache dir not found: '$globalConfig->{'cachedir'}'\n";
    (-d $globalConfig->{'cachedir'}) or die "[!] Cache dir not dir: '$globalConfig->{'cachedir'}'\n";
@@ -1015,13 +1020,13 @@ my   $configDefs = {
    $globalConfig->{'login_path'}       = "$globalConfig->{'unifilocation'}/login";
    $globalConfig->{'logout_path'}      = "$globalConfig->{'unifilocation'}/logout";
    $globalConfig->{'login_data'}       = "username=$globalConfig->{'unifiuser'}&password=$globalConfig->{'unifipass'}&login=login";
-   $globalConfig->{'login_type'}       = 'x-www-form-urlencoded';
+   $globalConfig->{'content_type'}       = 'x-www-form-urlencoded';
 
     # Set controller version specific data
     if (CONTROLLER_VERSION_4 eq $globalConfig->{'unifiversion'}) {
        $globalConfig->{'login_path'}   = "$globalConfig->{'unifilocation'}/api/login";
        $globalConfig->{'login_data'}   = "{\"username\":\"$globalConfig->{'unifiuser'}\",\"password\":\"$globalConfig->{'unifipass'}\"}",
-       $globalConfig->{'login_type'}   = 'json',
+       $globalConfig->{'content_type'}  = 'application/json;charset=UTF-8',
        # Data fetch rules.
        # BY_GET mean that data fetched by HTTP GET from .../api/[s/<site>/]{'path'} operation.
        #    [s/<site>/] must be excluded from path if {'excl_sitename'} is defined
@@ -1041,8 +1046,8 @@ my   $configDefs = {
           OBJ_EXTENSION , {'method' => BY_GET, 'path' => 'list/extension'},
           OBJ_NUMBER    , {'method' => BY_GET, 'path' => 'list/number'},
           OBJ_USERGROUP , {'method' => BY_GET, 'path' => 'list/usergroup'},
-          OBJ_SETTING   , {'method' => BY_GET, 'path' => 'get/setting'},
           OBJ_WLAN      , {'method' => BY_GET, 'path' => 'list/wlanconf'},
+          OBJ_SETTING   , {'method' => BY_GET, 'path' => 'get/setting'},
           OBJ_USW_PORT_TABLE , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
           OBJ_UAP_VAP_TABLE  , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
        };
@@ -1063,5 +1068,8 @@ my   $configDefs = {
     } else {
        die "[!] Version of controller is unknown: '$globalConfig->{'unifiversion'}, stop\n";
     }
-    TRUE;
+
+   logMessage("[.] globalConfig:\n".(Data::Dumper::Dumper $globalConfig), DEBUG_MID) if (DEBUG_MID <= $globalConfig->{'debuglevel'});
+
+   TRUE;
 }
