@@ -8,7 +8,7 @@ Whatsnew: [Russian](https://github.com/zbx-sadman/unifi_proxy/blob/master/experi
 - [etc/init.d/unifi_proxy](https://github.com/zbx-sadman/unifi_proxy/blob/master/etc/init.d/unifi_proxy) - system start-up service script;
 - [src/unifi_proxy_get.c](https://github.com/zbx-sadman/unifi_proxy/blob/master/src/unifi_proxy_get.c) - _unifi_proxy_get_ utility source code;
 - [etc/zabbix/zbx_unifi.conf](https://github.com/zbx-sadman/unifi_proxy/blob/master/etc/zabbix/zbx_unifi.conf) - plugged to _zabbix_agentd.conf_ config file;
-- [src/zbx_unifi/unifi.c](https://github.com/zbx-sadman/unifi_proxy/tree/blob/master/src/zbx_unifi) - _unifi.so_ Zabbix loadable module source code;
+- [src/zbx_unifi/unifi.c](https://github.com/zbx-sadman/unifi_proxy/blob/master/src/zbx_unifi/unifi.c) - _unifi.so_ Zabbix loadable module source code;
 - [usr/local/lib/unifi.conf](https://github.com/zbx-sadman/unifi_proxy/blob/master/usr/local/lib/zabbix/unifi.conf) - config file for _unifi.so_.
 
 Command-line version of UniFi Proxy is [UniFi Miner](https://github.com/zbx-sadman/unifi_miner)
@@ -23,7 +23,7 @@ v1.1.0 whatsnew: [Russian] (https://github.com/zbx-sadman/unifi_proxy/blob/maste
 
 If u have an problem, you can search the existing closed or open [issues](https://github.com/zbx-sadman/unifi_proxy/issues). 
 
-Templates for Zabbix [here](https://github.com/zbx-sadman/unifi_proxy/tree/blob/master/Zabbix_Templates)
+Templates for Zabbix [here](https://github.com/zbx-sadman/unifi_proxy/tree/master/Zabbix_Templates)
 
 Response time compare table (6 UAPs installation):
 
