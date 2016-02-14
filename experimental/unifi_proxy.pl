@@ -62,6 +62,7 @@ use constant {
      OBJ_USW => 'usw',
      OBJ_USW_PORT_TABLE => 'usw_port_table',
      OBJ_WLAN => 'wlan',
+     OBJ_WLANGROUP => 'wlangroup',
 
      # *** Debug levels ***
      DEBUG_LOW => 1,
@@ -1107,31 +1108,35 @@ sub readConf {
        # BY_CMD say that data fetched by HTTP POST {'cmd'} to .../api/[s/<site>/]{'path'}
        #
        $globalConfig->{'fetch_rules'}  = {
-          OBJ_SITE      , {'method' => BY_GET, 'path' => 'self/sites', 'excl_sitename' => TRUE},
-          OBJ_UAP       , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
-          OBJ_UPH       , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
-          OBJ_USG       , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
-          OBJ_USW       , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
-          OBJ_SYSINFO   , {'method' => BY_GET, 'path' => 'stat/sysinfo'},
-          OBJ_USER      , {'method' => BY_GET, 'path' => 'stat/sta'},
-          OBJ_ALLUSER   , {'method' => BY_GET, 'path' => 'stat/alluser'},
-          OBJ_HEALTH    , {'method' => BY_GET, 'path' => 'stat/health'},
-          OBJ_NETWORK   , {'method' => BY_GET, 'path' => 'list/networkconf'},
-          OBJ_EXTENSION , {'method' => BY_GET, 'path' => 'list/extension'},
-          OBJ_NUMBER    , {'method' => BY_GET, 'path' => 'list/number'},
-          OBJ_USERGROUP , {'method' => BY_GET, 'path' => 'list/usergroup'},
-          OBJ_WLAN      , {'method' => BY_GET, 'path' => 'list/wlanconf'},
-          OBJ_SETTING   , {'method' => BY_GET, 'path' => 'get/setting'},
+          OBJ_SITE       , {'method' => BY_GET, 'path' => 'self/sites', 'excl_sitename' => TRUE},
+          OBJ_UAP        , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
+          OBJ_UPH        , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
+          OBJ_USG        , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
+          OBJ_USW        , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
+          OBJ_SYSINFO    , {'method' => BY_GET, 'path' => 'stat/sysinfo'},
+          OBJ_USER       , {'method' => BY_GET, 'path' => 'stat/sta'},
+          OBJ_ALLUSER    , {'method' => BY_GET, 'path' => 'stat/alluser'},
+          OBJ_HEALTH     , {'method' => BY_GET, 'path' => 'stat/health'},
+          OBJ_NETWORK    , {'method' => BY_GET, 'path' => 'list/networkconf'},
+          OBJ_EXTENSION  , {'method' => BY_GET, 'path' => 'list/extension'},
+          OBJ_NUMBER     , {'method' => BY_GET, 'path' => 'list/number'},
+          OBJ_USERGROUP  , {'method' => BY_GET, 'path' => 'list/usergroup'},
+          OBJ_WLAN       , {'method' => BY_GET, 'path' => 'list/wlanconf'},
+          OBJ_WLANGROUP  , {'method' => BY_GET, 'path' => 'list/wlangroup'},
+          OBJ_SETTING    , {'method' => BY_GET, 'path' => 'get/setting'},
           OBJ_USW_PORT_TABLE , {'parent' => OBJ_USW},
-          OBJ_UAP_VAP_TABLE  , {'parent' => OBJ_UAP},
+          OBJ_UAP_VAP_TABLE  , {'parent' => OBJ_UAP}
        };
     } elsif (CONTROLLER_VERSION_3 eq $globalConfig->{'unifiversion'}) {
        $globalConfig->{'fetch_rules'}  = {
-          OBJ_SITE      , {'method' => BY_CMD, 'path' => 'cmd/sitemgr', 'cmd' => '{"cmd":"get-sites"}'},
-          #OBJ_SYSINFO   , {'method' => BY_GET, 'path' => 'stat/sysinfo'},
-          OBJ_UAP       , {'method' => BY_GET, 'path' => 'stat/device'},
-          OBJ_USER      , {'method' => BY_GET, 'path' => 'stat/sta'},
-          OBJ_WLAN      , {'method' => BY_GET, 'path' => 'list/wlanconf'}
+          OBJ_SITE       , {'method' => BY_CMD, 'path' => 'cmd/sitemgr', 'cmd' => '{"cmd":"get-sites"}'},
+          OBJ_UAP        , {'method' => BY_GET, 'path' => 'stat/device'},
+          OBJ_SYSINFO    , {'method' => BY_GET, 'path' => 'stat/sysinfo'},
+          OBJ_USER       , {'method' => BY_GET, 'path' => 'stat/sta'},
+          OBJ_ALLUSER    , {'method' => BY_GET, 'path' => 'stat/alluser'},
+          OBJ_USERGROUP  , {'method' => BY_GET, 'path' => 'list/usergroup'},
+          OBJ_WLAN       , {'method' => BY_GET, 'path' => 'list/wlanconf'},
+          OBJ_WLANGROUP  , {'method' => BY_GET, 'path' => 'list/wlangroup'}
        };
     } elsif (CONTROLLER_VERSION_2 eq $globalConfig->{'unifiversion'}) {
        $globalConfig->{'fetch_rules'}  = {
