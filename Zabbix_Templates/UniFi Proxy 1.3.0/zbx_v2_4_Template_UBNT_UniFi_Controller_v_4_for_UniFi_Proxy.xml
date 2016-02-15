@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <zabbix_export>
     <version>2.0</version>
-    <date>2016-02-15T07:30:49Z</date>
+    <date>2016-02-15T07:53:15Z</date>
     <groups>
         <group>
             <name>Templates</name>
@@ -1145,7 +1145,7 @@ aptitude bring a-lot-of-beer</description>
                     <snmp_community/>
                     <snmp_oid/>
                     <key>unifi.proxy[discovery,uap]</key>
-                    <delay>60</delay>
+                    <delay>600</delay>
                     <status>0</status>
                     <allowed_hosts/>
                     <snmpv3_contextname/>
