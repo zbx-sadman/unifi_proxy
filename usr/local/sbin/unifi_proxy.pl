@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #  
-#  UniFi Proxy 1.3.0  
+#  UniFi Proxy 1.3.1
 #
 #  (C) Grigory Prigodin 2015-2016
 #  Contact e-mail: zbx.sadman@gmail.com
@@ -24,7 +24,7 @@ use constant {
 #     CONFIG_FILE_DEFAULT => './unifi_proxy.conf',
      TOOL_HOMEPAGE => 'https://github.com/zbx-sadman/unifi_proxy',
      TOOL_NAME => 'UniFi Proxy',
-     TOOL_VERSION => '1.3.0',
+     TOOL_VERSION => '1.3.1',
 
      # *** Actions ***
      ACT_MEDIAN => 'median',
@@ -70,6 +70,7 @@ use constant {
      DEBUG_HIGH => 3,
 
      # *** other ***
+     SITENAME_DEFAULT => 'default',
      MAX_BUFFER_LEN => 65536,
      MAX_REQUEST_LEN => 256,
      KEY_ITEMS_NUM => 'items_num',
@@ -547,7 +548,7 @@ sub getMetric {
            $keyParts[$i]->{'e'} = [];
            # After splitting split again - for get keys, values and equation sign. Store it for future
            for (my $k = 0; $k < @fStrings; $k++) {
-              push($keyParts[$i]->{'e'}, {'k'=>$1, 's' => $2, 'v'=> $3}) if ($fStrings[$k] =~ /^([^=<>]+)(=|<>|<|>|>=|<=)([^=<>]+)$/);
+              push(@{$keyParts[$i]->{'e'}}, {'k'=>$1, 's' => $2, 'v'=> $3}) if ($fStrings[$k] =~ /^([^=<>]+)(=|<>|<|>|>=|<=)([^=<>]+)$/);
            }
            # count the number of filter expressions
            $nFilters++;
@@ -1058,10 +1059,10 @@ sub readConf {
         'action'                   => [TYPE_STRING, ACT_DISCOVERY],
         'objecttype'               => [TYPE_STRING, OBJ_WLAN],
         'sitename'                 => [TYPE_STRING, 'default'],
-        'unifilocation'            => [TYPE_STRING, '127.0.0.1:8443'],
+        'unifilocation'            => [TYPE_STRING, 'https://127.0.0.1:8443'],
         'unifiversion'             => [TYPE_STRING, CONTROLLER_VERSION_4],
-        'unifiuser'                => [TYPE_STRING, 'admin'],
-        'unifipass'                => [TYPE_STRING, 'ubnt'],
+        'unifiuser'                => [TYPE_STRING, 'stat'],
+        'unifipass'                => [TYPE_STRING, 'stat'],
         'unifitimeout'             => [TYPE_NUMBER, 60],
 
         'nullchar'                 => [TYPE_STRING, ''],
@@ -1079,7 +1080,7 @@ sub readConf {
     } 
 
     # copy readed values to global config and cast its if need    
-    for (keys $configDefs) {
+    for (keys %{$configDefs}) {
         # $globalConfig->{$_} = $configVals->{$_} ? $configVals->{$_} : $configDefs->{$_}[1];
         $globalConfig->{$_} = $configVals->{$_} // $configDefs->{$_}[1];
         $globalConfig->{$_} +=0 if (TYPE_NUMBER  == $configDefs->{$_}[0]);
