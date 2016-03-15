@@ -17,6 +17,9 @@ It is a TCP server written in Perl, which helps deliver to the monitoring system
 
 If you have a question about Proxy, please, refer to [UniFi Proxy Russian Guide] (https://github.com/zbx-sadman/unifi_proxy/wiki/UniFi-Proxy-Guide-in-Russian) or [UniFi Proxy English Guide] (https://github.com/zbx-sadman/unifi_proxy/wiki/UniFi-Proxy-Guide-in-English).
 
+Also, answers to many questions and troubleshooting issues may be found in  
+[UniFi Miner Russian Guide](https://github.com/zbx-sadman/unifi_miner/wiki/UniFi-Miner-Guide-in-Russian) or [UniFi Miner English Guide](https://github.com/zbx-sadman/unifi_miner/wiki/UniFi-Miner-Guide-in-English).
+
 If u have an problem, you can search the existing closed or open [issues](https://github.com/zbx-sadman/unifi_proxy/issues). 
 
 Templates for Zabbix [here](https://github.com/zbx-sadman/unifi_proxy/tree/master/Zabbix_Templates)
