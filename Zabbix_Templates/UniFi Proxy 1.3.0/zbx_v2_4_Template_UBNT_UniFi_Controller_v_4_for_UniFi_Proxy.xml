@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <zabbix_export>
     <version>2.0</version>
-    <date>2016-02-15T07:53:15Z</date>
+    <date>2016-03-28T14:25:36Z</date>
     <groups>
         <group>
             <name>Templates</name>
@@ -326,7 +326,7 @@ aptitude bring a-lot-of-beer</description>
                     <snmp_community/>
                     <multiplier>0</multiplier>
                     <snmp_oid/>
-                    <key>unifi.proxy[&quot;get,sysinfo,,update_available&quot;]</key>
+                    <key>unifi.proxy[get,sysinfo,,update_available]</key>
                     <delay>60</delay>
                     <history>7</history>
                     <trends>90</trends>
@@ -369,7 +369,7 @@ aptitude bring a-lot-of-beer</description>
                     <snmp_community/>
                     <multiplier>0</multiplier>
                     <snmp_oid/>
-                    <key>unifi.proxy[&quot;get,sysinfo,,update_downloaded&quot;]</key>
+                    <key>unifi.proxy[get,sysinfo,,update_downloaded]</key>
                     <delay>60</delay>
                     <history>7</history>
                     <trends>90</trends>
@@ -412,7 +412,7 @@ aptitude bring a-lot-of-beer</description>
                     <snmp_community/>
                     <multiplier>0</multiplier>
                     <snmp_oid/>
-                    <key>unifi.proxy[&quot;get,sysinfo,,version&quot;]</key>
+                    <key>unifi.proxy[get,sysinfo,,version]</key>
                     <delay>60</delay>
                     <history>7</history>
                     <trends>365</trends>
@@ -748,7 +748,7 @@ aptitude bring a-lot-of-beer</description>
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[get,health,{#SITENAME},&quot;[subsystem={#SUBSYSTEM}].num_user,,0&quot;]</key>
+                            <key>unifi.proxy[get,health,{#SITENAME},&quot;[subsystem={#SUBSYSTEM}].num_user&quot;,,0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -963,7 +963,7 @@ aptitude bring a-lot-of-beer</description>
                             <logtimefmt/>
                         </item_prototype>
                         <item_prototype>
-                            <name>[{#SITEDESC}] Network {#NAME} is NAT</name>
+                            <name>[{#SITEDESC}] Network {#NAME} is NATed</name>
                             <type>0</type>
                             <snmp_community/>
                             <multiplier>0</multiplier>
@@ -1565,7 +1565,7 @@ aptitude bring a-lot-of-beer</description>
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[pcount,user,{#SITENAME},&quot;[ap_mac={#MAC}].[rssi&gt;25&amp;rssi&lt;=40].rssi,,0&quot;]</key>
+                            <key>unifi.proxy[pcount,user,{#SITENAME},&quot;[ap_mac={#MAC}].[rssi&gt;25&amp;rssi&lt;=40].rssi&quot;,,0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -1651,7 +1651,7 @@ aptitude bring a-lot-of-beer</description>
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[get,uap,{#SITENAME},num_sta,{#ID}]</key>
+                            <key>unifi.proxy[get,uap,{#SITENAME},num_sta,{#ID},0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -1694,7 +1694,7 @@ aptitude bring a-lot-of-beer</description>
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[get,uap,{#SITENAME},num_sta,{#MAC}]</key>
+                            <key>unifi.proxy[get,uap,{#SITENAME},num_sta,{#MAC},0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -1737,7 +1737,7 @@ aptitude bring a-lot-of-beer</description>
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[get,uap,{#SITENAME},guest-num_sta,{#ID}]</key>
+                            <key>unifi.proxy[get,uap,{#SITENAME},guest-num_sta,{#ID},0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -1780,7 +1780,7 @@ aptitude bring a-lot-of-beer</description>
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[get,uap,{#SITENAME},user-num_sta,{#ID}]</key>
+                            <key>unifi.proxy[get,uap,{#SITENAME},user-num_sta,{#ID},0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -1997,7 +1997,7 @@ aptitude bring a-lot-of-beer</description>
                             <snmp_community/>
                             <multiplier>1</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[get,uap,{#SITENAME},rx_bytes,{#ID}]</key>
+                            <key>unifi.proxy[get,uap,{#SITENAME},rx_bytes,{#ID},0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -2645,7 +2645,7 @@ BZ2LR - UAP LR&#13;
                             <snmp_community/>
                             <multiplier>1</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[get,uap,{#SITENAME},tx_bytes,{#ID}]</key>
+                            <key>unifi.proxy[get,uap,{#SITENAME},tx_bytes,{#ID},0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -2688,7 +2688,7 @@ BZ2LR - UAP LR&#13;
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[get,uap,{#SITENAME},stat.rx_dropped,{#ID}]</key>
+                            <key>unifi.proxy[get,uap,{#SITENAME},&quot;stat.rx_dropped&quot;,{#ID},0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -2735,7 +2735,7 @@ The bottom line is that the high RX error rate is due to Radio interferences fro
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[sum,uap,{#SITENAME},vap_table.rx_errors,{#ID}]</key>
+                            <key>unifi.proxy[sum,uap,{#SITENAME},&quot;vap_table.rx_errors&quot;,{#ID},0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -2821,7 +2821,7 @@ The bottom line is that the high RX error rate is due to Radio interferences fro
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[get,uap,{#SITENAME},stat.tx_dropped,{#ID}]</key>
+                            <key>unifi.proxy[get,uap,{#SITENAME},&quot;stat.tx_dropped&quot;,{#ID},0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -2866,7 +2866,7 @@ The number of packets dropped during transmission.</description>
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[sum,uap,{#SITENAME},vap_table.tx_errors,{#ID}]</key>
+                            <key>unifi.proxy[sum,uap,{#SITENAME},&quot;vap_table.tx_errors&quot;,{#ID},0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -2909,7 +2909,7 @@ The number of packets dropped during transmission.</description>
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[get,uap,{#SITENAME},ng_tx_retries,{#ID}]</key>
+                            <key>unifi.proxy[get,uap,{#SITENAME},ng_tx_retries,{#ID},0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -2954,7 +2954,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[get,uap,{#SITENAME},ng_ast_txto,{#ID}]</key>
+                            <key>unifi.proxy[get,uap,{#SITENAME},ng_ast_txto,{#ID},0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -3040,7 +3040,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[get,uap,{#SITENAME},ng-channel,{#ID}]</key>
+                            <key>unifi.proxy[get,uap,{#SITENAME},ng-channel,{#ID},0]</key>
                             <delay>120</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -3083,7 +3083,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[get,uap,{#SITENAME},ng-tx_power,{#ID}]</key>
+                            <key>unifi.proxy[get,uap,{#SITENAME},ng-tx_power,{#ID},0]</key>
                             <delay>120</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -3430,7 +3430,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                                     <type>0</type>
                                     <item>
                                         <host>Template UBNT UniFi Controller</host>
-                                        <key>unifi.proxy[pcount,user,{#SITENAME},&quot;[ap_mac={#MAC}].[rssi&gt;25&amp;rssi&lt;=40].rssi,,0&quot;]</key>
+                                        <key>unifi.proxy[pcount,user,{#SITENAME},&quot;[ap_mac={#MAC}].[rssi&gt;25&amp;rssi&lt;=40].rssi&quot;,,0]</key>
                                     </item>
                                 </graph_item>
                                 <graph_item>
@@ -3474,7 +3474,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                                     <type>0</type>
                                     <item>
                                         <host>Template UBNT UniFi Controller</host>
-                                        <key>unifi.proxy[get,uap,{#SITENAME},guest-num_sta,{#ID}]</key>
+                                        <key>unifi.proxy[get,uap,{#SITENAME},guest-num_sta,{#ID},0]</key>
                                     </item>
                                 </graph_item>
                                 <graph_item>
@@ -3486,7 +3486,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                                     <type>0</type>
                                     <item>
                                         <host>Template UBNT UniFi Controller</host>
-                                        <key>unifi.proxy[get,uap,{#SITENAME},user-num_sta,{#ID}]</key>
+                                        <key>unifi.proxy[get,uap,{#SITENAME},user-num_sta,{#ID},0]</key>
                                     </item>
                                 </graph_item>
                             </graph_items>
@@ -3618,7 +3618,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                                     <type>0</type>
                                     <item>
                                         <host>Template UBNT UniFi Controller</host>
-                                        <key>unifi.proxy[get,uap,{#SITENAME},tx_bytes,{#ID}]</key>
+                                        <key>unifi.proxy[get,uap,{#SITENAME},tx_bytes,{#ID},0]</key>
                                     </item>
                                 </graph_item>
                                 <graph_item>
@@ -3630,7 +3630,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                                     <type>0</type>
                                     <item>
                                         <host>Template UBNT UniFi Controller</host>
-                                        <key>unifi.proxy[sum,uap,{#SITENAME},vap_table.tx_errors,{#ID}]</key>
+                                        <key>unifi.proxy[sum,uap,{#SITENAME},&quot;vap_table.tx_errors&quot;,{#ID},0]</key>
                                     </item>
                                 </graph_item>
                                 <graph_item>
@@ -3642,7 +3642,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                                     <type>0</type>
                                     <item>
                                         <host>Template UBNT UniFi Controller</host>
-                                        <key>unifi.proxy[sum,uap,{#SITENAME},vap_table.rx_errors,{#ID}]</key>
+                                        <key>unifi.proxy[sum,uap,{#SITENAME},&quot;vap_table.rx_errors&quot;,{#ID},0]</key>
                                     </item>
                                 </graph_item>
                                 <graph_item>
@@ -3654,7 +3654,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                                     <type>0</type>
                                     <item>
                                         <host>Template UBNT UniFi Controller</host>
-                                        <key>unifi.proxy[get,uap,{#SITENAME},rx_bytes,{#ID}]</key>
+                                        <key>unifi.proxy[get,uap,{#SITENAME},rx_bytes,{#ID},0]</key>
                                     </item>
                                 </graph_item>
                             </graph_items>
@@ -4068,7 +4068,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[sum,uap,{#NAME},num_sta]</key>
+                            <key>unifi.proxy[sum,uap,{#NAME},num_sta,,0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -4154,7 +4154,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[max,uap,{#NAME},num_sta]</key>
+                            <key>unifi.proxy[max,uap,{#NAME},num_sta,,0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -4197,7 +4197,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[min,uap,{#NAME},num_sta]</key>
+                            <key>unifi.proxy[min,uap,{#NAME},num_sta,,0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -4322,92 +4322,6 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                         </item_prototype>
                         <item_prototype>
                             <name>[{#DESC}] Number of &quot;$4&quot; UAPs</name>
-                            <type>15</type>
-                            <snmp_community/>
-                            <multiplier>0</multiplier>
-                            <snmp_oid/>
-                            <key>unifi.proxy[calc,uap,{#NAME},inactive]</key>
-                            <delay>60</delay>
-                            <history>7</history>
-                            <trends>90</trends>
-                            <status>0</status>
-                            <value_type>3</value_type>
-                            <allowed_hosts/>
-                            <units/>
-                            <delta>0</delta>
-                            <snmpv3_contextname/>
-                            <snmpv3_securityname/>
-                            <snmpv3_securitylevel>0</snmpv3_securitylevel>
-                            <snmpv3_authprotocol>0</snmpv3_authprotocol>
-                            <snmpv3_authpassphrase/>
-                            <snmpv3_privprotocol>0</snmpv3_privprotocol>
-                            <snmpv3_privpassphrase/>
-                            <formula>1</formula>
-                            <delay_flex/>
-                            <params>last(&quot;unifi.proxy[get,uap,{#NAME},items_num]&quot;)- last(&quot;unifi.proxy[sum,uap,{#NAME},state]&quot;)</params>
-                            <ipmi_sensor/>
-                            <data_type>0</data_type>
-                            <authtype>0</authtype>
-                            <username/>
-                            <password/>
-                            <publickey/>
-                            <privatekey/>
-                            <port/>
-                            <description/>
-                            <inventory_link>0</inventory_link>
-                            <applications>
-                                <application>
-                                    <name>UniFi Sites</name>
-                                </application>
-                            </applications>
-                            <valuemap/>
-                            <logtimefmt/>
-                        </item_prototype>
-                        <item_prototype>
-                            <name>[{#DESC}] Number of &quot;$4&quot; UAPs</name>
-                            <type>15</type>
-                            <snmp_community/>
-                            <multiplier>0</multiplier>
-                            <snmp_oid/>
-                            <key>unifi.proxy[calc,uap,{#NAME},unadopted]</key>
-                            <delay>60</delay>
-                            <history>7</history>
-                            <trends>90</trends>
-                            <status>0</status>
-                            <value_type>3</value_type>
-                            <allowed_hosts/>
-                            <units/>
-                            <delta>0</delta>
-                            <snmpv3_contextname/>
-                            <snmpv3_securityname/>
-                            <snmpv3_securitylevel>0</snmpv3_securitylevel>
-                            <snmpv3_authprotocol>0</snmpv3_authprotocol>
-                            <snmpv3_authpassphrase/>
-                            <snmpv3_privprotocol>0</snmpv3_privprotocol>
-                            <snmpv3_privpassphrase/>
-                            <formula>1</formula>
-                            <delay_flex/>
-                            <params>last(&quot;unifi.proxy[get,uap,{#NAME},items_num]&quot;)- last(&quot;unifi.proxy[sum,uap,{#NAME},adopted]&quot;)</params>
-                            <ipmi_sensor/>
-                            <data_type>0</data_type>
-                            <authtype>0</authtype>
-                            <username/>
-                            <password/>
-                            <publickey/>
-                            <privatekey/>
-                            <port/>
-                            <description/>
-                            <inventory_link>0</inventory_link>
-                            <applications>
-                                <application>
-                                    <name>UniFi Sites</name>
-                                </application>
-                            </applications>
-                            <valuemap/>
-                            <logtimefmt/>
-                        </item_prototype>
-                        <item_prototype>
-                            <name>[{#DESC}] Number of &quot;$4&quot; UAPs</name>
                             <type>7</type>
                             <snmp_community/>
                             <multiplier>0</multiplier>
@@ -4450,12 +4364,98 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                             <logtimefmt/>
                         </item_prototype>
                         <item_prototype>
+                            <name>[{#DESC}] Number of &quot;$4&quot; UAPs</name>
+                            <type>15</type>
+                            <snmp_community/>
+                            <multiplier>0</multiplier>
+                            <snmp_oid/>
+                            <key>unifi.proxy[calc,uap,{#NAME},unadopted]</key>
+                            <delay>60</delay>
+                            <history>7</history>
+                            <trends>90</trends>
+                            <status>0</status>
+                            <value_type>3</value_type>
+                            <allowed_hosts/>
+                            <units/>
+                            <delta>0</delta>
+                            <snmpv3_contextname/>
+                            <snmpv3_securityname/>
+                            <snmpv3_securitylevel>0</snmpv3_securitylevel>
+                            <snmpv3_authprotocol>0</snmpv3_authprotocol>
+                            <snmpv3_authpassphrase/>
+                            <snmpv3_privprotocol>0</snmpv3_privprotocol>
+                            <snmpv3_privpassphrase/>
+                            <formula>1</formula>
+                            <delay_flex/>
+                            <params>last(&quot;unifi.proxy[get,site,{#NAME},num_ap,,0]&quot;)- last(&quot;unifi.proxy[sum,uap,{#NAME},adopted]&quot;)</params>
+                            <ipmi_sensor/>
+                            <data_type>0</data_type>
+                            <authtype>0</authtype>
+                            <username/>
+                            <password/>
+                            <publickey/>
+                            <privatekey/>
+                            <port/>
+                            <description/>
+                            <inventory_link>0</inventory_link>
+                            <applications>
+                                <application>
+                                    <name>UniFi Sites</name>
+                                </application>
+                            </applications>
+                            <valuemap/>
+                            <logtimefmt/>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>[{#DESC}] Number of &quot;$4&quot; UAPs</name>
+                            <type>15</type>
+                            <snmp_community/>
+                            <multiplier>0</multiplier>
+                            <snmp_oid/>
+                            <key>unifi.proxy[calc,uap,{#NAME},inactive]</key>
+                            <delay>60</delay>
+                            <history>7</history>
+                            <trends>90</trends>
+                            <status>0</status>
+                            <value_type>3</value_type>
+                            <allowed_hosts/>
+                            <units/>
+                            <delta>0</delta>
+                            <snmpv3_contextname/>
+                            <snmpv3_securityname/>
+                            <snmpv3_securitylevel>0</snmpv3_securitylevel>
+                            <snmpv3_authprotocol>0</snmpv3_authprotocol>
+                            <snmpv3_authpassphrase/>
+                            <snmpv3_privprotocol>0</snmpv3_privprotocol>
+                            <snmpv3_privpassphrase/>
+                            <formula>1</formula>
+                            <delay_flex/>
+                            <params>last(&quot;unifi.proxy[get,site,{#NAME},num_ap,,0]&quot;)- last(&quot;unifi.proxy[sum,uap,{#NAME},state,,0]&quot;)</params>
+                            <ipmi_sensor/>
+                            <data_type>0</data_type>
+                            <authtype>0</authtype>
+                            <username/>
+                            <password/>
+                            <publickey/>
+                            <privatekey/>
+                            <port/>
+                            <description/>
+                            <inventory_link>0</inventory_link>
+                            <applications>
+                                <application>
+                                    <name>UniFi Sites</name>
+                                </application>
+                            </applications>
+                            <valuemap/>
+                            <logtimefmt/>
+                        </item_prototype>
+                        <item_prototype>
                             <name>[{#DESC}] Number of active UAPs</name>
                             <type>7</type>
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[sum,uap,{#NAME},state]</key>
+                            <key>unifi.proxy[sum,uap,{#NAME},state,,0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -4498,7 +4498,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[get,site,{#NAME},num_ap]</key>
+                            <key>unifi.proxy[get,site,{#NAME},num_ap,,0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -4541,7 +4541,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[get,wlan,{#NAME},items_num]</key>
+                            <key>unifi.proxy[get,wlan,{#NAME},items_num,,0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -4584,7 +4584,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[sum,uap,{#NAME},vap_table.rx_errors]</key>
+                            <key>unifi.proxy[sum,uap,{#NAME},&quot;vap_table.rx_errors&quot;,,0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -4670,7 +4670,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[sum,uap,{#NAME},stat.tx_dropped]</key>
+                            <key>unifi.proxy[sum,uap,{#NAME},&quot;stat.tx_dropped&quot;,,0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -4713,7 +4713,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[sum,uap,{#NAME},vap_table.tx_errors]</key>
+                            <key>unifi.proxy[sum,uap,{#NAME},&quot;vap_table.tx_errors&quot;,,0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -4756,7 +4756,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[sum,uap,{#NAME},user-num_sta]</key>
+                            <key>unifi.proxy[sum,uap,{#NAME},user-num_sta,,0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -4799,7 +4799,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                             <snmp_community/>
                             <multiplier>1</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[sum,uap,{#NAME},rx_bytes]</key>
+                            <key>unifi.proxy[sum,uap,{#NAME},rx_bytes,,0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -4842,7 +4842,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                             <snmp_community/>
                             <multiplier>1</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[sum,uap,{#NAME},tx_bytes]</key>
+                            <key>unifi.proxy[sum,uap,{#NAME},tx_bytes,,0]</key>
                             <delay>60</delay>
                             <history>7</history>
                             <trends>90</trends>
@@ -4928,7 +4928,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                                     <type>0</type>
                                     <item>
                                         <host>Template UBNT UniFi Controller</host>
-                                        <key>unifi.proxy[sum,uap,{#NAME},user-num_sta]</key>
+                                        <key>unifi.proxy[sum,uap,{#NAME},user-num_sta,,0]</key>
                                     </item>
                                 </graph_item>
                                 <graph_item>
@@ -4940,7 +4940,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                                     <type>0</type>
                                     <item>
                                         <host>Template UBNT UniFi Controller</host>
-                                        <key>unifi.proxy[max,uap,{#NAME},num_sta]</key>
+                                        <key>unifi.proxy[max,uap,{#NAME},num_sta,,0]</key>
                                     </item>
                                 </graph_item>
                                 <graph_item>
@@ -4964,7 +4964,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                                     <type>0</type>
                                     <item>
                                         <host>Template UBNT UniFi Controller</host>
-                                        <key>unifi.proxy[min,uap,{#NAME},num_sta]</key>
+                                        <key>unifi.proxy[min,uap,{#NAME},num_sta,,0]</key>
                                     </item>
                                 </graph_item>
                             </graph_items>
@@ -5032,7 +5032,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                                     <type>0</type>
                                     <item>
                                         <host>Template UBNT UniFi Controller</host>
-                                        <key>unifi.proxy[sum,uap,{#NAME},state]</key>
+                                        <key>unifi.proxy[sum,uap,{#NAME},state,,0]</key>
                                     </item>
                                 </graph_item>
                             </graph_items>
@@ -5064,7 +5064,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                                     <type>0</type>
                                     <item>
                                         <host>Template UBNT UniFi Controller</host>
-                                        <key>unifi.proxy[sum,uap,{#NAME},vap_table.tx_errors]</key>
+                                        <key>unifi.proxy[sum,uap,{#NAME},&quot;vap_table.tx_errors&quot;,,0]</key>
                                     </item>
                                 </graph_item>
                                 <graph_item>
@@ -5076,7 +5076,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                                     <type>0</type>
                                     <item>
                                         <host>Template UBNT UniFi Controller</host>
-                                        <key>unifi.proxy[sum,uap,{#NAME},tx_bytes]</key>
+                                        <key>unifi.proxy[sum,uap,{#NAME},tx_bytes,,0]</key>
                                     </item>
                                 </graph_item>
                                 <graph_item>
@@ -5088,7 +5088,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                                     <type>0</type>
                                     <item>
                                         <host>Template UBNT UniFi Controller</host>
-                                        <key>unifi.proxy[sum,uap,{#NAME},rx_bytes]</key>
+                                        <key>unifi.proxy[sum,uap,{#NAME},rx_bytes,,0]</key>
                                     </item>
                                 </graph_item>
                                 <graph_item>
@@ -5100,7 +5100,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                                     <type>0</type>
                                     <item>
                                         <host>Template UBNT UniFi Controller</host>
-                                        <key>unifi.proxy[sum,uap,{#NAME},vap_table.rx_errors]</key>
+                                        <key>unifi.proxy[sum,uap,{#NAME},&quot;vap_table.rx_errors&quot;,,0]</key>
                                     </item>
                                 </graph_item>
                             </graph_items>
@@ -6855,6 +6855,49 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                             <logtimefmt/>
                         </item_prototype>
                         <item_prototype>
+                            <name>[{#SITEDESC}] WLAN &quot;{#NAME}&quot; NAME</name>
+                            <type>7</type>
+                            <snmp_community/>
+                            <multiplier>0</multiplier>
+                            <snmp_oid/>
+                            <key>unifi.proxy[get,wlan,{#SITENAME},name,{#ID}]</key>
+                            <delay>60</delay>
+                            <history>1</history>
+                            <trends>365</trends>
+                            <status>1</status>
+                            <value_type>4</value_type>
+                            <allowed_hosts/>
+                            <units/>
+                            <delta>0</delta>
+                            <snmpv3_contextname/>
+                            <snmpv3_securityname/>
+                            <snmpv3_securitylevel>0</snmpv3_securitylevel>
+                            <snmpv3_authprotocol>0</snmpv3_authprotocol>
+                            <snmpv3_authpassphrase/>
+                            <snmpv3_privprotocol>0</snmpv3_privprotocol>
+                            <snmpv3_privpassphrase/>
+                            <formula>1</formula>
+                            <delay_flex/>
+                            <params/>
+                            <ipmi_sensor/>
+                            <data_type>0</data_type>
+                            <authtype>0</authtype>
+                            <username/>
+                            <password/>
+                            <publickey/>
+                            <privatekey/>
+                            <port/>
+                            <description/>
+                            <inventory_link>0</inventory_link>
+                            <applications>
+                                <application>
+                                    <name>UniFi Wireless LANs</name>
+                                </application>
+                            </applications>
+                            <valuemap/>
+                            <logtimefmt/>
+                        </item_prototype>
+                        <item_prototype>
                             <name>[{#SITEDESC}] WLAN &quot;{#NAME}&quot; security mode</name>
                             <type>7</type>
                             <snmp_community/>
@@ -7137,7 +7180,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                     <screen_items>
                         <screen_item>
                             <resourcetype>20</resourcetype>
-                            <width>400</width>
+                            <width>650</width>
                             <height>100</height>
                             <x>0</x>
                             <y>0</y>

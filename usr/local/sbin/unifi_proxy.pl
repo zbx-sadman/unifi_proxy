@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #  
-#  UniFi Proxy 1.3.1
+#  UniFi Proxy 1.3.2
 #
 #  (C) Grigory Prigodin 2015-2016
 #  Contact e-mail: zbx.sadman@gmail.com
@@ -24,7 +24,7 @@ use constant {
 #     CONFIG_FILE_DEFAULT => './unifi_proxy.conf',
      TOOL_HOMEPAGE => 'https://github.com/zbx-sadman/unifi_proxy',
      TOOL_NAME => 'UniFi Proxy',
-     TOOL_VERSION => '1.3.1',
+     TOOL_VERSION => '1.3.2',
 
      # *** Actions ***
      ACT_MEDIAN => 'median',
@@ -350,7 +350,7 @@ sub handleConnection {
        # test for $opt_i is MAC or ID
        if ($opt_i) {
           $opt_i = lc($opt_i);
-          if ( uc($opt_i) =~ m/^([0-9a-z]{2}[:-]){5}([0-9a-z]{2})$/ ) {
+          if ($opt_i =~ m/^([0-9a-z]{2}[:-]){5}([0-9a-z]{2})$/ ) {
              # is MAC
              $gC->{'mac'} = $opt_i;
           } else {
@@ -364,129 +364,128 @@ sub handleConnection {
        $siteList = [{'name' => $gC->{'sitename'}}];
        $selectingResult = {'total' => 0, 'data' => []};
 
-   # if OBJ_SITE exists in fetch_rules - siteList could be obtained for 'discovery' action or in case with undefuned sitename
-   if ($gC->{'fetch_rules'}->{OBJ_SITE()} && (ACT_DISCOVERY eq $gC->{'action'} || !$gC->{'sitename_given'}))  {
-      # Clear array, because fetchData() will push data to its
-      $siteList = [];
-      # Get site list. v3 need {'sitename'} to use into 'cmd' URI
-      fetchData($gC, $gC->{'sitename'}, OBJ_SITE, '', $siteList);
-   }
-
-   logMessage(DEBUG_MID, "[.]\t\t Going over all sites");
-   foreach my $siteObj (@{$siteList}) {
-      # skip hidden site 'super'
-      next if (defined($siteObj->{'attr_hidden'}));
-      # skip site, if '-s' option used and current site other, that given
-      next if ($gC->{'sitename_given'} && ($gC->{'sitename'} ne $siteObj->{'name'}));
-
-      logMessage(DEBUG_MID, "[.]\t\t Handle site: '$siteObj->{'name'}'");
-      $objList = [];
-      # parentObject used for transfer site (or device) info to LLD. That data used for "parent"-related macro (like {#SITENAME}, {#UAPID})
-      # user ask info for 'site' object. Data already loaded to $siteObj.
-      if (OBJ_SITE eq $gC->{'objecttype'}) {
-         # Just make array from site object (which is hash) and take null for parenObj - no parent for 'site' exists
-         $objList = [$siteObj], $parentObj = {'type' => ''};
-      } else {
-         # Take objects from foreach'ed site
-         # Take parent of virtual object, if 'parent' property detected. Or use real object type, if not.
-         my $wrkObjType = ($gC->{'fetch_rules'}->{$gC->{'objecttype'}}->{'parent'}) // $gC->{'objecttype'};
-         # Fetch object from site
-         unless (fetchData($gC, $siteObj->{'name'}, $wrkObjType, $gC->{'id'}, $objList)) {
-           logMessage(DEBUG_MID, "[!] No data found for object $gC->{'objecttype'} (may be wrong site name)"), next;
-         }
-         # siteObj is parent for each site item: device/user/etc
-         $parentObj = {'type' => OBJ_SITE, 'data' => $siteObj};
+      # if OBJ_SITE exists in fetch_rules - siteList could be obtained from controller
+      if ($gC->{'fetch_rules'}->{OBJ_SITE()})  {
+         # Clear array, because fetchData() will push data to its
+         $siteList = [];
+         # Get site list. v3 need {'sitename'} to use into 'cmd' URI
+         fetchData($gC, $gC->{'sitename'}, OBJ_SITE, '', $siteList);
       }
 
-      # Test "-k" option
-      if (! $gC->{'key'}) {
-         # No key given - user need to discovery objects?
-         if (ACT_DISCOVERY eq $gC->{'action'}) {
-            logMessage(DEBUG_MID, "[.]\t\t Discovering w/o key: add part of LLD");
-            addToLLD($gC, $parentObj, $objList, $selectingResult->{'data'}) if ($objList);
+      logMessage(DEBUG_MID, "[.]\t\t Going over all sites");
+      foreach my $siteObj (@{$siteList}) {
+         # skip hidden site 'super'
+         next if (defined($siteObj->{'attr_hidden'}));
+         # skip site, if '-s' option used and current site other, that given
+         next if ($gC->{'sitename_given'} && ($gC->{'sitename'} ne $siteObj->{'name'}));
+
+         logMessage(DEBUG_MID, "[.]\t\t Handle site: '$siteObj->{'name'}'");
+         $objList = [];
+         # parentObject used for transfer site (or device) info to LLD. That data used for "parent"-related macro (like {#SITENAME}, {#UAPID})
+         # user ask info for 'site' object. Data already loaded to $siteObj.
+         if (OBJ_SITE eq $gC->{'objecttype'}) {
+            # Just make array from site object (which is hash) and take null for parenObj - no parent for 'site' exists
+            $objList = [$siteObj], $parentObj = {'type' => ''};
          } else {
-            logMessage(DEBUG_MID, "[.]\t\t Action '$gC->{'action'}' w/o key not allowed");
+            # Take objects from foreach'ed site
+            # Take parent of virtual object, if 'parent' property detected. Or use real object type, if not.
+            my $wrkObjType = ($gC->{'fetch_rules'}->{$gC->{'objecttype'}}->{'parent'}) // $gC->{'objecttype'};
+            # Fetch object from site
+            unless (fetchData($gC, $siteObj->{'name'}, $wrkObjType, $gC->{'id'}, $objList)) {
+              logMessage(DEBUG_MID, "[!] No data found for object $gC->{'objecttype'} (may be wrong site name)"), next;
+            }
+            # siteObj is parent for each site item: device/user/etc
+            $parentObj = {'type' => OBJ_SITE, 'data' => $siteObj};
          }
-      } else {
-         # key is defined - any action could be processed
-         logMessage(DEBUG_LOW, "[*]\t\t Key given: $gC->{'key'}");
-         # every object in site must be processeed separately to make right parentObject for key-based LLD
-         if (ACT_DISCOVERY eq $gC->{'action'}) {
-            my $wrkSelectingResult;
-            # Take every site's object
-            foreach (@{$objList}) {
-               # [re-]init temporary var
-               $wrkSelectingResult = {'total' => 0, 'data' => []};
-               # prepare parent object
-               $parentObj = { 'type' => $gC->{'fetch_rules'}->{$gC->{'objecttype'}}->{'parent'}, 'data' => $_};
-               # select all elements which linked with key (key must be point to array)
-               getMetric($gC, $_, $gC->{'key'}, $wrkSelectingResult);
-               # Add some properties to LLD array
-               addToLLD($gC, $parentObj, $wrkSelectingResult->{'data'}, $selectingResult->{'data'}) if (@{$wrkSelectingResult->{'data'}} > 0);
+
+         # Test "-k" option
+         if (! $gC->{'key'}) {
+            # No key given - user need to discovery objects?
+            if (ACT_DISCOVERY eq $gC->{'action'}) {
+               logMessage(DEBUG_MID, "[.]\t\t Discovering w/o key: add part of LLD");
+               addToLLD($gC, $parentObj, $objList, $selectingResult->{'data'}) if ($objList);
+            } else {
+               logMessage(DEBUG_MID, "[.]\t\t Action '$gC->{'action'}' w/o key not allowed");
             }
          } else {
-            getMetric($gC, $objList, $gC->{'key'}, $selectingResult);
-            # 'get' - just get data from first site's first object  in objectList and jump out from loop
-            last if (ACT_GET eq $gC->{'action'});
-          }
-     } # if (! $gC->{'key'}) ...else...
-   } #foreach sites
-
-       ################################################## Final stage of main loop  ##################################################
-
-
-   # Form JSON from result for 'discovery' action
-    if (ACT_DISCOVERY eq $gC->{'action'}) {
-       logMessage(DEBUG_MID, "[.] Make LLD JSON");
-       # make JSON
-       delete $selectingResult->{'total'};
-       $buffer = $gC->{'jsonxs'}->encode($selectingResult);
-    } else {
-       # User want no discovery action
-       my $totalKeysProcesseed = @{$selectingResult->{'data'}};
-       if ($totalKeysProcesseed) {
-          my $result = @{$selectingResult->{'data'}}[0];
-          if (ACT_GET eq $gC->{'action'}) { 
-             $buffer = $result;
-          } else {
-             if (ACT_SUM eq $gC->{'action'} || ACT_PSUM eq $gC->{'action'} || ACT_AMEAN eq $gC->{'action'}) {
-                $result = 0;
-                for (my $i = 0; $i < $totalKeysProcesseed; $i++) { $result += @{$selectingResult->{'data'}}[$i]; }
-                if (ACT_PSUM eq $gC->{'action'}) {
-                   $result = (0 == $selectingResult->{'total'}) ? '0' : $result/($selectingResult->{'total'}/100);
-
-                } elsif (ACT_AMEAN eq $gC->{'action'}) { 
-                   $result = (0 == $totalKeysProcesseed) ? '0' : $result/$totalKeysProcesseed;
-                }
-
-             } elsif (ACT_MAX eq $gC->{'action'}) {
-                for (my $i = 0; $i < $totalKeysProcesseed; $i++) { $result = @{$selectingResult->{'data'}}[$i] if ($result < @{$selectingResult->{'data'}}[$i]); }
-   
-             } elsif (ACT_MIN eq $gC->{'action'}) {
-                for (my $i = 0; $i < $totalKeysProcesseed; $i++) { $result = @{$selectingResult->{'data'}}[$i] if ($result > @{$selectingResult->{'data'}}[$i]); }
-
-             } elsif (ACT_COUNT eq $gC->{'action'}) {
-                $result = $totalKeysProcesseed;
-
-             } elsif (ACT_PCOUNT eq $gC->{'action'}) {
-                $result = (0 == $selectingResult->{'total'}) ? '0' : $totalKeysProcesseed/($selectingResult->{'total'}/100);
-
-             } elsif (ACT_MEDIAN eq $gC->{'action'}) {
-                @{$selectingResult->{'data'}} = sort {$a <=> $b} @{$selectingResult->{'data'}};
-                my $middle = int($totalKeysProcesseed/2);
-                #odd?
-                if($totalKeysProcesseed % 2) {
-                   $result = $selectingResult->{'data'}[$middle];
-                } else {
-                   #even
-                   $result = ($selectingResult->{'data'}[$middle-1] + $selectingResult->{'data'}[$middle])/2;
-                }
+            # key is defined - any action could be processed
+            logMessage(DEBUG_LOW, "[*]\t\t Key given: $gC->{'key'}");
+            # every object in site must be processeed separately to make right parentObject for key-based LLD
+            if (ACT_DISCOVERY eq $gC->{'action'}) {
+               my $wrkSelectingResult;
+               # Take every site's object
+               foreach (@{$objList}) {
+                  # [re-]init temporary var
+                  $wrkSelectingResult = {'total' => 0, 'data' => []};
+                  # prepare parent object
+                  $parentObj = { 'type' => $gC->{'fetch_rules'}->{$gC->{'objecttype'}}->{'parent'}, 'data' => $_};
+                  # select all elements which linked with key (key must be point to array)
+                  getMetric($gC, $_, $gC->{'key'}, $wrkSelectingResult);
+                  # Add some properties to LLD array
+                  addToLLD($gC, $parentObj, $wrkSelectingResult->{'data'}, $selectingResult->{'data'}) if (@{$wrkSelectingResult->{'data'}} > 0);
+               }
+            } else {
+               getMetric($gC, $objList, $gC->{'key'}, $selectingResult);
+               # 'get' - just get data from first site's first object  in objectList and jump out from loop
+               last if (ACT_GET eq $gC->{'action'});
             }
-            # round to .xxx only if action is ACT_AMEAN || ACT_PCOUNT || ACT_PSUM || ACT_MEDIAN
-            $buffer = sprintf("%.".(isInArray($gC->{'action'}, (ACT_AMEAN, ACT_PCOUNT, ACT_PSUM, ACT_MEDIAN)) ? ROUND_NUMBER : 0)."f", $result); 
-         } # if (ACT_GET eq $gC->{'action'}) ...else...
-      } # if ($totalKeysProcesseed)
-   } # if (ACT_DISCOVERY eq $gC->{'action'}) ...else...
+        } # if (! $gC->{'key'}) ...else...
+      } #foreach sites
+
+      ################################################## Final stage of main loop  ##################################################
+
+      # Form JSON from result for 'discovery' action
+       if (ACT_DISCOVERY eq $gC->{'action'}) {
+          logMessage(DEBUG_MID, "[.] Make LLD JSON");
+          # make JSON
+          delete $selectingResult->{'total'};
+          $buffer = $gC->{'jsonxs'}->encode($selectingResult);
+       } else {
+          # User want no discovery action
+          my $totalKeysProcesseed = @{$selectingResult->{'data'}};
+          if ($totalKeysProcesseed) {
+             my $result = @{$selectingResult->{'data'}}[0];
+             if (ACT_GET eq $gC->{'action'}) { 
+                $buffer = $result;
+             } else {
+                if (ACT_SUM eq $gC->{'action'} || ACT_PSUM eq $gC->{'action'} || ACT_AMEAN eq $gC->{'action'}) {
+                   $result = 0;
+                   for (my $i = 0; $i < $totalKeysProcesseed; $i++) { $result += @{$selectingResult->{'data'}}[$i]; }
+                   if (ACT_PSUM eq $gC->{'action'}) {
+                      $result = (0 == $selectingResult->{'total'}) ? '0' : $result/($selectingResult->{'total'}/100);
+   
+                   } elsif (ACT_AMEAN eq $gC->{'action'}) { 
+                      $result = (0 == $totalKeysProcesseed) ? '0' : $result/$totalKeysProcesseed;
+                   }
+  
+                } elsif (ACT_MAX eq $gC->{'action'}) {
+                   for (my $i = 0; $i < $totalKeysProcesseed; $i++) { $result = @{$selectingResult->{'data'}}[$i] if ($result < @{$selectingResult->{'data'}}[$i]); }
+      
+                } elsif (ACT_MIN eq $gC->{'action'}) {
+                   for (my $i = 0; $i < $totalKeysProcesseed; $i++) { $result = @{$selectingResult->{'data'}}[$i] if ($result > @{$selectingResult->{'data'}}[$i]); }
+   
+                } elsif (ACT_COUNT eq $gC->{'action'}) {
+                   $result = $totalKeysProcesseed;
+
+                } elsif (ACT_PCOUNT eq $gC->{'action'}) {
+                   $result = (0 == $selectingResult->{'total'}) ? '0' : $totalKeysProcesseed/($selectingResult->{'total'}/100);
+   
+                } elsif (ACT_MEDIAN eq $gC->{'action'}) {
+                   @{$selectingResult->{'data'}} = sort {$a <=> $b} @{$selectingResult->{'data'}};
+                   my $middle = int($totalKeysProcesseed/2);
+                   #odd?
+                   if($totalKeysProcesseed % 2) {
+                      $result = $selectingResult->{'data'}[$middle];
+                   } else {
+                      #even
+                      $result = ($selectingResult->{'data'}[$middle-1] + $selectingResult->{'data'}[$middle])/2;
+                   }
+               }
+               # round to .xxx only if action is ACT_AMEAN || ACT_PCOUNT || ACT_PSUM || ACT_MEDIAN
+               $buffer = sprintf("%.".(isInArray($gC->{'action'}, (ACT_AMEAN, ACT_PCOUNT, ACT_PSUM, ACT_MEDIAN)) ? ROUND_NUMBER : 0)."f", $result); 
+            } # if (ACT_GET eq $gC->{'action'}) ...else...
+         } # if ($totalKeysProcesseed)
+      } # if (ACT_DISCOVERY eq $gC->{'action'}) ...else...
 
     # main while loop continue block for catching 'next' jumps and write to socket someting
     } continue { 
