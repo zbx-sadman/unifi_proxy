@@ -10,7 +10,7 @@ Installable package is not exist, DYI-ers must explore _/etc_ , _/usr/local_ and
 - [etc/init.d/unifi_proxy](https://github.com/zbx-sadman/unifi_proxy/blob/master/etc/init.d/unifi_proxy) - system start-up service script;
 - [src/unifi_proxy_get.c](https://github.com/zbx-sadman/unifi_proxy/blob/master/src/unifi_proxy_get.c) - _unifi_proxy_get_ utility source code;
 - [etc/zabbix/zbx_unifi.conf](https://github.com/zbx-sadman/unifi_proxy/blob/master/etc/zabbix/zbx_unifi.conf) - plugged to _zabbix_agentd.conf_ config file;
-- [src/zbx_unifi/unifi.c](https://github.com/zbx-sadman/unifi_proxy/blob/master/src/zbx_unifi/unifi.c) - _unifi.so_ Zabbix loadable module source code;
+- [src/modules/](https://github.com/zbx-sadman/unifi_proxy/blob/master/src/modules) - _unifi.so_ Zabbix's v2 & Zabbix's v3 loadable module source code;
 - [usr/local/lib/unifi.conf](https://github.com/zbx-sadman/unifi_proxy/blob/master/usr/local/lib/zabbix/unifi.conf) - config file for _unifi.so_.
 
 Command-line version of UniFi Proxy is [UniFi Miner](https://github.com/zbx-sadman/unifi_miner)
