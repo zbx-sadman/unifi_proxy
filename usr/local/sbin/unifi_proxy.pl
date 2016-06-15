@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #  
-#  UniFi Proxy 1.3.3
+#  UniFi Proxy 1.3.2
 #
 #  (C) Grigory Prigodin 2015-2016
 #  Contact e-mail: zbx.sadman@gmail.com
@@ -24,7 +24,7 @@ use constant {
 #     CONFIG_FILE_DEFAULT => './unifi_proxy.conf',
      TOOL_HOMEPAGE => 'https://github.com/zbx-sadman/unifi_proxy',
      TOOL_NAME => 'UniFi Proxy',
-     TOOL_VERSION => '1.3.3',
+     TOOL_VERSION => '1.3.2',
 
      # *** Actions ***
      ACT_MEDIAN => 'median',
@@ -181,9 +181,9 @@ exit;
 ############################################################################################################################
 sub isInArray {
     for (my $i = 1; $i < @_; $i++) {
-        return TRUE if ($_[0] eq $_[$i]);
+        return 1 if ($_[0] eq $_[$i]);
     }
-    return FALSE;
+    return 0;
 }
 
 sub logMessage
@@ -866,7 +866,7 @@ sub fetchDataFromController {
    ################################################## Logging in  ##################################################
    # Check to 'still logged' state
    # ->head() not work
-   $response = $_[0]->{'ua'}->get("$_[0]->{'api_path'}/s/super/get/setting");
+   $response = $_[0]->{'ua'}->get("$_[0]->{'api_path'}/self");
    # FETCH_OTHER_ERROR = is_error == TRUE (1), FETCH_NO_ERROR = is_error == FALSE (0)
    # FETCH_OTHER_ERROR stop work if get() haven't success && no error 401 (login required). For example - error 500 (connect refused)
    $errorCode = $response->is_error;
@@ -875,7 +875,7 @@ sub fetchDataFromController {
         # logging in
         logMessage(DEBUG_LOW, "[.]\t\tTry to log in into controller...");
         $response = $_[0]->{'ua'}->post($_[0]->{'login_path'}, 'Content_type' => $_[0]->{'content_type'}, 'Content' => $_[0]->{'login_data'});
-        logMessage(DEBUG_HIGH, "[>>]\t\t HTTP respose:\n\t", {%$response});
+        logMessage(DEBUG_HIGH, "[>>]\t\t HTTP respose:\n\t", $response);
         $errorCode = $response->is_error;
         if (CONTROLLER_VERSION_4 eq $_[0]->{'unifiversion'}) {
            # v4 return 'Bad request' (code 400) on wrong auth
@@ -1010,8 +1010,8 @@ sub addToLLD {
 #         ;
 #      } elsif ($givenObjType eq OBJ_USERGROUP) {
 #         ;
-      } elsif (OBJ_UAP eq $givenObjType) {
-         $_[3][$o]->{'{#NAME}'}      = $_->{'name'} ? "$_->{'name'}" : "$_->{'mac'}";
+#      } elsif (OBJ_UAP eq $givenObjType) {
+#         ;
 #      } elsif ($givenObjType eq OBJ_USG || $givenObjType eq OBJ_USW) {
 #        ;
       }
@@ -1095,7 +1095,7 @@ sub readConf {
    $globalConfig->{'login_path'}       = "$globalConfig->{'unifilocation'}/login";
    $globalConfig->{'logout_path'}      = "$globalConfig->{'unifilocation'}/logout";
    $globalConfig->{'login_data'}       = "username=$globalConfig->{'unifiuser'}&password=$globalConfig->{'unifipass'}&login=login";
-   $globalConfig->{'content_type'}       = 'application/x-www-form-urlencoded';
+   $globalConfig->{'content_type'}       = 'x-www-form-urlencoded';
 
     # Set controller version specific data
     if (CONTROLLER_VERSION_4 eq $globalConfig->{'unifiversion'}) {
