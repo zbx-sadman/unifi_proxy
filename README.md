@@ -1,5 +1,5 @@
 ## UniFi Proxy
-Actual release is v1.3.2. 
+Actual release is v1.3.4. 
 
 See [change log](https://github.com/zbx-sadman/unifi_proxy/blob/master/ChangeLog.md) before update.
 

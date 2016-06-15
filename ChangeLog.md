@@ -1,8 +1,15 @@
-##UniFi Miner & Proxy change log 
+##UniFi Proxy change log 
+
+###v1.3.3
+Fixed:
+- UniFi Controller v3: error with logging in;
+- UniFi Controller v3: error in 'still connected' testing on fetching data from controller;
+- UniFi Controller v3: mapping _mac_-key to {#NAME} macro (Zabbix's LLD) if _name_-key is empty;
+- Debug: print of HTTP response output.
 
 ###v1.3.2
 Fixed:
-- fixed MAC detection procedure in 'id' field;
+- MAC detection procedure in 'id' field;
 - site list obtaining ('site' object processing does not work).
 
 ###v1.3.1
