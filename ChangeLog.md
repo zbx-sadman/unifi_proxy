@@ -1,4 +1,4 @@
-##UniFi Miner & Proxy change log 
+##UniFi Proxy change log 
 
 ###v1.3.3
 Fixed:
@@ -9,7 +9,7 @@ Fixed:
 
 ###v1.3.2
 Fixed:
-- fixed MAC detection procedure in 'id' field;
+- MAC detection procedure in 'id' field;
 - site list obtaining ('site' object processing does not work).
 
 ###v1.3.1
