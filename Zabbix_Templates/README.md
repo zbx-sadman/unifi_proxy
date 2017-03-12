@@ -5,3 +5,5 @@ Please, make sure you finished setting up Zabbix Agent, which communicate to Uni
 `Hostname=<hostname from Zabbix web interface>`
 
 **Template use "Zabbix agent (active)" item type.**
+
+Note: you must use `UnsafeUserParameters=1` option of Zabbix Agentd to avoid following error: _"Special characters "\, ', ", `, *, ?, [, ], {, }, ~, $, !, &, ;, (, ), <, >, |, #, @, 0x0a" are not allowed in the parameters"_. 
