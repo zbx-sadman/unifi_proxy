@@ -16,6 +16,7 @@ use POSIX ();
 use JSON::MaybeXS ();
 use LWP ();
 use IO::Socket ();
+use IO::Socket::INET6 ();
 use IO::Socket::SSL ();
 use Data::Dumper ();
 
@@ -151,7 +152,7 @@ my $servers_num    = 0;
 # Read config
 readConf();
 # Bind to addr:port
-my $server = IO::Socket::INET->new(LocalAddr => $globalConfig->{'listenip'}, 
+my $server = IO::Socket::INET6->new(LocalAddr => $globalConfig->{'listenip'}, 
                                    LocalPort => $globalConfig->{'listenport'}, 
                                    Listen    => $globalConfig->{'maxclients'},
                                    Reuse     => 1,
