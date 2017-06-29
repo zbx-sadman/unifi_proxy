@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #  
-#  UniFi Proxy 1.3.3
+#  UniFi Proxy 1.3.4
 #
 #  (C) Grigory Prigodin 2015-2016
 #  Contact e-mail: zbx.sadman@gmail.com
@@ -13,9 +13,10 @@
 use strict;
 use warnings;
 use POSIX ();
-use JSON::XS ();
+use JSON::MaybeXS ();
 use LWP ();
 use IO::Socket ();
+use IO::Socket::INET6 ();
 use IO::Socket::SSL ();
 use Data::Dumper ();
 
@@ -24,7 +25,7 @@ use constant {
 #     CONFIG_FILE_DEFAULT => './unifi_proxy.conf',
      TOOL_HOMEPAGE => 'https://github.com/zbx-sadman/unifi_proxy',
      TOOL_NAME => 'UniFi Proxy',
-     TOOL_VERSION => '1.3.3',
+     TOOL_VERSION => '1.3.4',
 
      # *** Actions ***
      ACT_MEDIAN => 'median',
@@ -151,7 +152,7 @@ my $servers_num    = 0;
 # Read config
 readConf();
 # Bind to addr:port
-my $server = IO::Socket::INET->new(LocalAddr => $globalConfig->{'listenip'}, 
+my $server = IO::Socket::INET6->new(LocalAddr => $globalConfig->{'listenip'}, 
                                    LocalPort => $globalConfig->{'listenport'}, 
                                    Listen    => $globalConfig->{'maxclients'},
                                    Reuse     => 1,
@@ -273,8 +274,8 @@ sub makeServer {
         $serverConfig->{'downloaded'} = FALSE;
         # LWP::UserAgent object, which must be saved between fetchData() calls
         $serverConfig->{'ua'} = undef;
-        # JSON::XS object
-        $serverConfig->{'jsonxs'} = JSON::XS->new->utf8;
+        # JSON::MaybeXS object
+        $serverConfig->{'jsonxs'} = JSON::MaybeXS->new->utf8;
         # -s option used sign
         $serverConfig->{'sitename_given'} = FALSE;
 
