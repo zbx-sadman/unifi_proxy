@@ -1,5 +1,10 @@
 ##UniFi Proxy change log 
 
+###v1.3.4
+Enhancements:
+- Use JSON::MaybeXS to allow flexibility in which json-parsing module is used
+- Use IO::Socket::INET6 to enable IPv6
+
 ###v1.3.3
 Fixed:
 - UniFi Controller v3: error with logging in;
