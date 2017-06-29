@@ -13,7 +13,7 @@
 use strict;
 use warnings;
 use POSIX ();
-use JSON::XS ();
+use JSON::MaybeXS ();
 use LWP ();
 use IO::Socket ();
 use IO::Socket::SSL ();
@@ -273,8 +273,8 @@ sub makeServer {
         $serverConfig->{'downloaded'} = FALSE;
         # LWP::UserAgent object, which must be saved between fetchData() calls
         $serverConfig->{'ua'} = undef;
-        # JSON::XS object
-        $serverConfig->{'jsonxs'} = JSON::XS->new->utf8;
+        # JSON::MaybeXS object
+        $serverConfig->{'jsonxs'} = JSON::MaybeXS->new->utf8;
         # -s option used sign
         $serverConfig->{'sitename_given'} = FALSE;
 
