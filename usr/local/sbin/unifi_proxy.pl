@@ -1,8 +1,8 @@
 #!/usr/bin/perl
 #  
-#  UniFi Proxy 1.3.3
+#  UniFi Proxy 1.3.4
 #
-#  (C) Grigory Prigodin 2015-2016
+#  (C) Grigory Prigodin 2015-2017
 #  Contact e-mail: zbx.sadman@gmail.com
 #
 ### echo 1 > /proc/sys/net/ipv4/tcp_tw_recycle 
@@ -13,9 +13,9 @@
 use strict;
 use warnings;
 use POSIX ();
-use JSON::XS ();
+use JSON ();
 use LWP ();
-use IO::Socket ();
+use IO::Socket::IP ();
 use IO::Socket::SSL ();
 use Data::Dumper ();
 
@@ -24,7 +24,7 @@ use constant {
 #     CONFIG_FILE_DEFAULT => './unifi_proxy.conf',
      TOOL_HOMEPAGE => 'https://github.com/zbx-sadman/unifi_proxy',
      TOOL_NAME => 'UniFi Proxy',
-     TOOL_VERSION => '1.3.3',
+     TOOL_VERSION => '1.3.4',
 
      # *** Actions ***
      ACT_MEDIAN => 'median',
@@ -106,10 +106,10 @@ my $options;
 for (@ARGV) {
     # try to take key from $_
     if ( m/^[-](.+)/) {
-       # key is '--version' ? Set flag && do nothing inside loop
-       $options->{'version'} = TRUE, next if ($1 eq '-version');
+       # key is '--version' ? Set flag && jump out from the loop
+       $options->{'version'} = TRUE, last if ($1 eq '-version');
        # key is --help - do the same
-       $options->{'help'}    = TRUE, next if ($1 eq '-help');
+       $options->{'help'}    = TRUE, last if ($1 eq '-help');
        # key is just found? Init hash item
        $options->{$1} = '';
     } else {
@@ -127,7 +127,7 @@ if ($options->{'version'}) {
   
 if ($options->{'help'}) {
    print "\n",TOOL_NAME," v", TOOL_VERSION, "\n\nusage: $0 [-C /path/to/config/file] [-D]\n",
-          "\t-C\tpath to config file\n\t-D\trun in daemon mode\n\nAll other help on ", TOOL_HOMEPAGE, "\n\n";
+          "\t-C\tpath to config file\n\t-D\trun in daemon mode\n\nMore help on ", TOOL_HOMEPAGE, "\n\n";
    exit 0;
 }
 
@@ -151,13 +151,12 @@ my $servers_num    = 0;
 # Read config
 readConf();
 # Bind to addr:port
-my $server = IO::Socket::INET->new(LocalAddr => $globalConfig->{'listenip'}, 
+my $server = IO::Socket::IP->new(LocalAddr => $globalConfig->{'listenip'}, 
                                    LocalPort => $globalConfig->{'listenport'}, 
                                    Listen    => $globalConfig->{'maxclients'},
                                    Reuse     => 1,
                                    Type      => IO::Socket::SOCK_STREAM,
                                    Proto     => 'tcp',) || die $@; 
-
 
 # Assign subs to handle Signals
 $SIG{INT}  = $SIG{TERM} = \&handleINTSignal;
@@ -233,7 +232,7 @@ sub handleINTSignal {
 #
 #  Make new server with PreFork engine
 #    - Fork new server process
-#    - Accept and handle connection from IO::SOCket queue
+#    - Accept and handle connection from IO::Socket queue
 #
 #*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 sub makeServer {
@@ -274,7 +273,7 @@ sub makeServer {
         # LWP::UserAgent object, which must be saved between fetchData() calls
         $serverConfig->{'ua'} = undef;
         # JSON::XS object
-        $serverConfig->{'jsonxs'} = JSON::XS->new->utf8;
+        $serverConfig->{'json_engine'} = JSON->new->utf8;
         # -s option used sign
         $serverConfig->{'sitename_given'} = FALSE;
 
@@ -439,7 +438,7 @@ sub handleConnection {
           logMessage(DEBUG_MID, "[.] Make LLD JSON");
           # make JSON
           delete $selectingResult->{'total'};
-          $buffer = $gC->{'jsonxs'}->encode($selectingResult);
+          $buffer = $gC->{'json_engine'}->encode($selectingResult);
        } else {
           # User want no discovery action
           my $totalKeysProcesseed = @{$selectingResult->{'data'}};
@@ -790,7 +789,7 @@ sub fetchData {
             # ...fetch new data from controller...
             fetchDataFromController($_[0], $_[2], $objPath, $jsonData, $useShortWay) or logMessage(DEBUG_LOW, "[!] Can't fetch data from controller"), close ($fh), return FALSE;
             # unbuffered write it to temp file..
-            syswrite ($fh, $_[0]->{'jsonxs'}->encode($jsonData));
+            syswrite ($fh, $_[0]->{'json_engine'}->encode($jsonData));
             # Now unlink old cache filedata from cache filename 
             # All processes, who already read data - do not stop and successfully completed reading
             unlink ($cacheFileName);
@@ -813,7 +812,7 @@ sub fetchData {
        # open file
        open($fh, "<:mmap", $cacheFileName) or logMessage(DEBUG_LOW, "[!] Can't open '$cacheFileName' ($!)"), return FALSE;
        # read data from file
-       $jsonData=$_[0]->{'jsonxs'}->decode(<$fh>);
+       $jsonData=$_[0]->{'json_engine'}->decode(<$fh>);
        # close cache
        close($fh) or logMessage(DEBUG_LOW, "[!] Can't close cache file ($!)"), return FALSE;
     }
@@ -912,7 +911,7 @@ sub fetchDataFromController {
    }
 
    logMessage(DEBUG_HIGH, "[>>]\t\t Fetched data:\n\t", $response->decoded_content);
-   $_[3] = $_[0]->{'jsonxs'}->decode(${$response->content_ref()});
+   $_[3] = $_[0]->{'json_engine'}->decode(${$response->content_ref()});
 
 
    # server answer is ok ?
@@ -1148,6 +1147,7 @@ sub readConf {
        die "[!] Version of controller is unknown: '$globalConfig->{'unifiversion'}, stop\n";
     }
    logMessage(DEBUG_MID, "[.] globalConfig:\n", $globalConfig);
+   logMessage(DEBUG_MID, "[.] JSON backend: " . JSON::backend());
 
    TRUE;
 }
