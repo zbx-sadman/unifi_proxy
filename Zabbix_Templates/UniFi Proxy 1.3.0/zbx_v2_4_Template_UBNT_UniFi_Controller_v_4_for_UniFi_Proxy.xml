@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <zabbix_export>
     <version>2.0</version>
-    <date>2016-03-28T14:25:36Z</date>
+    <date>2017-07-14T10:22:04Z</date>
     <groups>
         <group>
             <name>Templates</name>
@@ -11,12 +11,12 @@
         <template>
             <template>Template UBNT UniFi Controller</template>
             <name>Template UBNT UniFi Controller</name>
-            <description>Template for UBNT UniFi Controller by zbx.sadman@gmail.com&amp;&#13;
+            <description>Template for UBNT UniFi Controller by zbx.sadman@gmail.com&#13;
 Tested with controller v4.x, Zabbix v 2.4.&#13;
  &#13;
 https://github.com/zbx-sadman/unifi_proxy&#13;
 &#13;
-Requirements: unifi_proxy &gt;= v1.3.0&#13;
+Requirements: unifi_proxy &gt;= v1.3.5&#13;
 &#13;
 aptitude install libjson-xs-perl libwww-perl libio-socket-ssl-perl libdata-dumper-simple-perl libtime-hires-perl &#13;
 &#13;
@@ -32,6 +32,9 @@ aptitude bring a-lot-of-beer</description>
                 </application>
                 <application>
                     <name>UniFi Health</name>
+                </application>
+                <application>
+                    <name>UniFi Hotspot vouchers</name>
                 </application>
                 <application>
                     <name>UniFi Network</name>
@@ -192,6 +195,135 @@ aptitude bring a-lot-of-beer</description>
                     <logtimefmt/>
                 </item>
                 <item>
+                    <name>Multi-use vouchers number</name>
+                    <type>7</type>
+                    <snmp_community/>
+                    <multiplier>0</multiplier>
+                    <snmp_oid/>
+                    <key>unifi.proxy[count,voucher,default,&quot;[quota=0].code&quot;,,0]</key>
+                    <delay>60</delay>
+                    <history>7</history>
+                    <trends>90</trends>
+                    <status>0</status>
+                    <value_type>3</value_type>
+                    <allowed_hosts/>
+                    <units>pcs</units>
+                    <delta>0</delta>
+                    <snmpv3_contextname/>
+                    <snmpv3_securityname/>
+                    <snmpv3_securitylevel>0</snmpv3_securitylevel>
+                    <snmpv3_authprotocol>0</snmpv3_authprotocol>
+                    <snmpv3_authpassphrase/>
+                    <snmpv3_privprotocol>0</snmpv3_privprotocol>
+                    <snmpv3_privpassphrase/>
+                    <formula>1</formula>
+                    <delay_flex/>
+                    <params/>
+                    <ipmi_sensor/>
+                    <data_type>0</data_type>
+                    <authtype>0</authtype>
+                    <username/>
+                    <password/>
+                    <publickey/>
+                    <privatekey/>
+                    <port/>
+                    <description/>
+                    <inventory_link>0</inventory_link>
+                    <applications>
+                        <application>
+                            <name>UniFi Hotspot vouchers</name>
+                        </application>
+                    </applications>
+                    <valuemap/>
+                    <logtimefmt/>
+                </item>
+                <item>
+                    <name>Multi-use vouchers percent</name>
+                    <type>7</type>
+                    <snmp_community/>
+                    <multiplier>0</multiplier>
+                    <snmp_oid/>
+                    <key>unifi.proxy[pcount,voucher,default,&quot;[quota=0].code&quot;,,0]</key>
+                    <delay>60</delay>
+                    <history>7</history>
+                    <trends>90</trends>
+                    <status>0</status>
+                    <value_type>0</value_type>
+                    <allowed_hosts/>
+                    <units>%</units>
+                    <delta>0</delta>
+                    <snmpv3_contextname/>
+                    <snmpv3_securityname/>
+                    <snmpv3_securitylevel>0</snmpv3_securitylevel>
+                    <snmpv3_authprotocol>0</snmpv3_authprotocol>
+                    <snmpv3_authpassphrase/>
+                    <snmpv3_privprotocol>0</snmpv3_privprotocol>
+                    <snmpv3_privpassphrase/>
+                    <formula>1</formula>
+                    <delay_flex/>
+                    <params/>
+                    <ipmi_sensor/>
+                    <data_type>0</data_type>
+                    <authtype>0</authtype>
+                    <username/>
+                    <password/>
+                    <publickey/>
+                    <privatekey/>
+                    <port/>
+                    <description/>
+                    <inventory_link>0</inventory_link>
+                    <applications>
+                        <application>
+                            <name>UniFi Hotspot vouchers</name>
+                        </application>
+                    </applications>
+                    <valuemap/>
+                    <logtimefmt/>
+                </item>
+                <item>
+                    <name>One-Time vouchers number</name>
+                    <type>7</type>
+                    <snmp_community/>
+                    <multiplier>0</multiplier>
+                    <snmp_oid/>
+                    <key>unifi.proxy[count,voucher,default,&quot;[quota=1].code&quot;,,0]</key>
+                    <delay>60</delay>
+                    <history>7</history>
+                    <trends>90</trends>
+                    <status>0</status>
+                    <value_type>3</value_type>
+                    <allowed_hosts/>
+                    <units>pcs</units>
+                    <delta>0</delta>
+                    <snmpv3_contextname/>
+                    <snmpv3_securityname/>
+                    <snmpv3_securitylevel>0</snmpv3_securitylevel>
+                    <snmpv3_authprotocol>0</snmpv3_authprotocol>
+                    <snmpv3_authpassphrase/>
+                    <snmpv3_privprotocol>0</snmpv3_privprotocol>
+                    <snmpv3_privpassphrase/>
+                    <formula>1</formula>
+                    <delay_flex/>
+                    <params/>
+                    <ipmi_sensor/>
+                    <data_type>0</data_type>
+                    <authtype>0</authtype>
+                    <username/>
+                    <password/>
+                    <publickey/>
+                    <privatekey/>
+                    <port/>
+                    <description/>
+                    <inventory_link>0</inventory_link>
+                    <applications>
+                        <application>
+                            <name>UniFi Hotspot vouchers</name>
+                        </application>
+                    </applications>
+                    <valuemap/>
+                    <logtimefmt/>
+                </item>
+                <item>
                     <name>SMTP enabled</name>
                     <type>7</type>
                     <snmp_community/>
@@ -272,6 +404,49 @@ aptitude bring a-lot-of-beer</description>
                     <applications>
                         <application>
                             <name>UniFi System info</name>
+                        </application>
+                    </applications>
+                    <valuemap/>
+                    <logtimefmt/>
+                </item>
+                <item>
+                    <name>Total vouchers number</name>
+                    <type>7</type>
+                    <snmp_community/>
+                    <multiplier>0</multiplier>
+                    <snmp_oid/>
+                    <key>unifi.proxy[count,voucher,default,code,,0]</key>
+                    <delay>60</delay>
+                    <history>7</history>
+                    <trends>90</trends>
+                    <status>0</status>
+                    <value_type>3</value_type>
+                    <allowed_hosts/>
+                    <units>pcs</units>
+                    <delta>0</delta>
+                    <snmpv3_contextname/>
+                    <snmpv3_securityname/>
+                    <snmpv3_securitylevel>0</snmpv3_securitylevel>
+                    <snmpv3_authprotocol>0</snmpv3_authprotocol>
+                    <snmpv3_authpassphrase/>
+                    <snmpv3_privprotocol>0</snmpv3_privprotocol>
+                    <snmpv3_privpassphrase/>
+                    <formula>1</formula>
+                    <delay_flex/>
+                    <params/>
+                    <ipmi_sensor/>
+                    <data_type>0</data_type>
+                    <authtype>0</authtype>
+                    <username/>
+                    <password/>
+                    <publickey/>
+                    <privatekey/>
+                    <port/>
+                    <description/>
+                    <inventory_link>0</inventory_link>
+                    <applications>
+                        <application>
+                            <name>UniFi Hotspot vouchers</name>
                         </application>
                     </applications>
                     <valuemap/>
@@ -444,6 +619,92 @@ aptitude bring a-lot-of-beer</description>
                     <applications>
                         <application>
                             <name>UniFi System info</name>
+                        </application>
+                    </applications>
+                    <valuemap/>
+                    <logtimefmt/>
+                </item>
+                <item>
+                    <name>Unused vouchers number</name>
+                    <type>7</type>
+                    <snmp_community/>
+                    <multiplier>0</multiplier>
+                    <snmp_oid/>
+                    <key>unifi.proxy[count,voucher,default,&quot;[used=0].code&quot;,,0]</key>
+                    <delay>60</delay>
+                    <history>7</history>
+                    <trends>90</trends>
+                    <status>0</status>
+                    <value_type>3</value_type>
+                    <allowed_hosts/>
+                    <units>pcs</units>
+                    <delta>0</delta>
+                    <snmpv3_contextname/>
+                    <snmpv3_securityname/>
+                    <snmpv3_securitylevel>0</snmpv3_securitylevel>
+                    <snmpv3_authprotocol>0</snmpv3_authprotocol>
+                    <snmpv3_authpassphrase/>
+                    <snmpv3_privprotocol>0</snmpv3_privprotocol>
+                    <snmpv3_privpassphrase/>
+                    <formula>1</formula>
+                    <delay_flex/>
+                    <params/>
+                    <ipmi_sensor/>
+                    <data_type>0</data_type>
+                    <authtype>0</authtype>
+                    <username/>
+                    <password/>
+                    <publickey/>
+                    <privatekey/>
+                    <port/>
+                    <description/>
+                    <inventory_link>0</inventory_link>
+                    <applications>
+                        <application>
+                            <name>UniFi Hotspot vouchers</name>
+                        </application>
+                    </applications>
+                    <valuemap/>
+                    <logtimefmt/>
+                </item>
+                <item>
+                    <name>Used vouchers percent</name>
+                    <type>7</type>
+                    <snmp_community/>
+                    <multiplier>0</multiplier>
+                    <snmp_oid/>
+                    <key>unifi.proxy[pcount,voucher,default,&quot;[used=1].code&quot;,,0]</key>
+                    <delay>60</delay>
+                    <history>7</history>
+                    <trends>90</trends>
+                    <status>0</status>
+                    <value_type>0</value_type>
+                    <allowed_hosts/>
+                    <units>%</units>
+                    <delta>0</delta>
+                    <snmpv3_contextname/>
+                    <snmpv3_securityname/>
+                    <snmpv3_securitylevel>0</snmpv3_securitylevel>
+                    <snmpv3_authprotocol>0</snmpv3_authprotocol>
+                    <snmpv3_authpassphrase/>
+                    <snmpv3_privprotocol>0</snmpv3_privprotocol>
+                    <snmpv3_privpassphrase/>
+                    <formula>1</formula>
+                    <delay_flex/>
+                    <params/>
+                    <ipmi_sensor/>
+                    <data_type>0</data_type>
+                    <authtype>0</authtype>
+                    <username/>
+                    <password/>
+                    <publickey/>
+                    <privatekey/>
+                    <port/>
+                    <description/>
+                    <inventory_link>0</inventory_link>
+                    <applications>
+                        <application>
+                            <name>UniFi Hotspot vouchers</name>
                         </application>
                     </applications>
                     <valuemap/>
@@ -1603,7 +1864,7 @@ aptitude bring a-lot-of-beer</description>
                             <logtimefmt/>
                         </item_prototype>
                         <item_prototype>
-                            <name>[{#SITEDESC}] UAP &quot;{#NAME}&quot; clients with very low signal on</name>
+                            <name>[{#SITEDESC}] UAP &quot;{#NAME}&quot; clients with very low signal</name>
                             <type>7</type>
                             <snmp_community/>
                             <multiplier>0</multiplier>
@@ -2018,49 +2279,6 @@ aptitude bring a-lot-of-beer</description>
                             <params/>
                             <ipmi_sensor/>
                             <data_type>0</data_type>
-                            <authtype>0</authtype>
-                            <username/>
-                            <password/>
-                            <publickey/>
-                            <privatekey/>
-                            <port/>
-                            <description/>
-                            <inventory_link>0</inventory_link>
-                            <applications>
-                                <application>
-                                    <name>UniFi Access Points</name>
-                                </application>
-                            </applications>
-                            <valuemap/>
-                            <logtimefmt/>
-                        </item_prototype>
-                        <item_prototype>
-                            <name>[{#SITEDESC}] UAP &quot;{#NAME}&quot; is active</name>
-                            <type>7</type>
-                            <snmp_community/>
-                            <multiplier>0</multiplier>
-                            <snmp_oid/>
-                            <key>unifi.proxy[get,uap,{#SITENAME},state,{#ID}]</key>
-                            <delay>60</delay>
-                            <history>7</history>
-                            <trends>90</trends>
-                            <status>0</status>
-                            <value_type>3</value_type>
-                            <allowed_hosts/>
-                            <units/>
-                            <delta>0</delta>
-                            <snmpv3_contextname/>
-                            <snmpv3_securityname/>
-                            <snmpv3_securitylevel>0</snmpv3_securitylevel>
-                            <snmpv3_authprotocol>0</snmpv3_authprotocol>
-                            <snmpv3_authpassphrase/>
-                            <snmpv3_privprotocol>0</snmpv3_privprotocol>
-                            <snmpv3_privpassphrase/>
-                            <formula>1</formula>
-                            <delay_flex/>
-                            <params/>
-                            <ipmi_sensor/>
-                            <data_type>3</data_type>
                             <authtype>0</authtype>
                             <username/>
                             <password/>
@@ -2816,6 +3034,59 @@ The bottom line is that the high RX error rate is due to Radio interferences fro
                             <logtimefmt/>
                         </item_prototype>
                         <item_prototype>
+                            <name>[{#SITEDESC}] UAP &quot;{#NAME}&quot; state</name>
+                            <type>7</type>
+                            <snmp_community/>
+                            <multiplier>0</multiplier>
+                            <snmp_oid/>
+                            <key>unifi.proxy[get,uap,{#SITENAME},state,{#ID}]</key>
+                            <delay>60</delay>
+                            <history>7</history>
+                            <trends>90</trends>
+                            <status>0</status>
+                            <value_type>3</value_type>
+                            <allowed_hosts/>
+                            <units/>
+                            <delta>0</delta>
+                            <snmpv3_contextname/>
+                            <snmpv3_securityname/>
+                            <snmpv3_securitylevel>0</snmpv3_securitylevel>
+                            <snmpv3_authprotocol>0</snmpv3_authprotocol>
+                            <snmpv3_authpassphrase/>
+                            <snmpv3_privprotocol>0</snmpv3_privprotocol>
+                            <snmpv3_privpassphrase/>
+                            <formula>1</formula>
+                            <delay_flex/>
+                            <params/>
+                            <ipmi_sensor/>
+                            <data_type>0</data_type>
+                            <authtype>0</authtype>
+                            <username/>
+                            <password/>
+                            <publickey/>
+                            <privatekey/>
+                            <port/>
+                            <description>0 - AP Disconnected;&#13;
+3 - AP Firmware Mismatch;&#13;
+4 - AP Upgrading;&#13;
+5 - AP Provisioning;&#13;
+2 - ?? &gt;&gt; source code: c = e[&quot;default&quot;] ? e.discovered_via == &quot;scan&quot; ? Msg.APIsolatedPending : Msg.APPending : Msg.APManagedByOthers;&#13;
+6 - AP HeartbeatMissed;&#13;
+7 - AP Adopting&#13;
+8 - AP Deleting;&#13;
+9 - AP Managed By Others;&#13;
+10 - AP Adopt Failed;&#13;
+11 - AP Isolated;</description>
+                            <inventory_link>0</inventory_link>
+                            <applications>
+                                <application>
+                                    <name>UniFi Access Points</name>
+                                </application>
+                            </applications>
+                            <valuemap/>
+                            <logtimefmt/>
+                        </item_prototype>
+                        <item_prototype>
                             <name>[{#SITEDESC}] UAP &quot;{#NAME}&quot; TX drops</name>
                             <type>7</type>
                             <snmp_community/>
@@ -2861,7 +3132,7 @@ The number of packets dropped during transmission.</description>
                             <logtimefmt/>
                         </item_prototype>
                         <item_prototype>
-                            <name>[{#SITEDESC}] UAP &quot;{#NAME}&quot; TX errors on</name>
+                            <name>[{#SITEDESC}] UAP &quot;{#NAME}&quot; TX errors</name>
                             <type>7</type>
                             <snmp_community/>
                             <multiplier>0</multiplier>
@@ -3141,20 +3412,20 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                             <type>0</type>
                         </trigger_prototype>
                         <trigger_prototype>
+                            <expression>{Template UBNT UniFi Controller:unifi.proxy[get,uap,{#SITENAME},state,{#ID}].max(1m)}=0</expression>
+                            <name>[{#SITEDESC}] UAP &quot;{#NAME}&quot; is disconnected &gt; 1 min</name>
+                            <url/>
+                            <status>0</status>
+                            <priority>3</priority>
+                            <description/>
+                            <type>0</type>
+                        </trigger_prototype>
+                        <trigger_prototype>
                             <expression>{Template UBNT UniFi Controller:unifi.proxy[get,uap,{#SITENAME},isolated,{#ID}].min(1m)}=1</expression>
                             <name>[{#SITEDESC}] UAP &quot;{#NAME}&quot; is isolated &gt; 1 min</name>
                             <url/>
                             <status>0</status>
                             <priority>2</priority>
-                            <description/>
-                            <type>0</type>
-                        </trigger_prototype>
-                        <trigger_prototype>
-                            <expression>{Template UBNT UniFi Controller:unifi.proxy[get,uap,{#SITENAME},state,{#ID}].max(1m)}=0</expression>
-                            <name>[{#SITEDESC}] UAP &quot;{#NAME}&quot; is not active &gt; 1 min</name>
-                            <url/>
-                            <status>0</status>
-                            <priority>3</priority>
                             <description/>
                             <type>0</type>
                         </trigger_prototype>
@@ -3330,18 +3601,6 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                                     </item>
                                 </graph_item>
                                 <graph_item>
-                                    <sortorder>3</sortorder>
-                                    <drawtype>0</drawtype>
-                                    <color>BB00BB</color>
-                                    <yaxisside>0</yaxisside>
-                                    <calc_fnc>4</calc_fnc>
-                                    <type>0</type>
-                                    <item>
-                                        <host>Template UBNT UniFi Controller</host>
-                                        <key>unifi.proxy[max,user,{#SITENAME},&quot;[ap_mac={#MAC}].rssi&quot;,,0]</key>
-                                    </item>
-                                </graph_item>
-                                <graph_item>
                                     <sortorder>2</sortorder>
                                     <drawtype>0</drawtype>
                                     <color>0000BB</color>
@@ -3351,6 +3610,18 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                                     <item>
                                         <host>Template UBNT UniFi Controller</host>
                                         <key>unifi.proxy[median ,user,{#SITENAME},&quot;[ap_mac={#MAC}].rssi&quot;,,0]</key>
+                                    </item>
+                                </graph_item>
+                                <graph_item>
+                                    <sortorder>3</sortorder>
+                                    <drawtype>0</drawtype>
+                                    <color>BB00BB</color>
+                                    <yaxisside>0</yaxisside>
+                                    <calc_fnc>4</calc_fnc>
+                                    <type>0</type>
+                                    <item>
+                                        <host>Template UBNT UniFi Controller</host>
+                                        <key>unifi.proxy[max,user,{#SITENAME},&quot;[ap_mac={#MAC}].rssi&quot;,,0]</key>
                                     </item>
                                 </graph_item>
                                 <graph_item>
@@ -3522,7 +3793,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                                     </item>
                                 </graph_item>
                                 <graph_item>
-                                    <sortorder>0</sortorder>
+                                    <sortorder>2</sortorder>
                                     <drawtype>0</drawtype>
                                     <color>BB0000</color>
                                     <yaxisside>0</yaxisside>
@@ -3530,11 +3801,11 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                                     <type>0</type>
                                     <item>
                                         <host>Template UBNT UniFi Controller</host>
-                                        <key>unifi.proxy[pcount,user,{#SITENAME},&quot;[ap_mac={#MAC}].[rssi&lt;30].rssi&quot;,,0]</key>
+                                        <key>unifi.proxy[pcount,user,{#SITENAME},&quot;[ap_mac={#MAC}].[rssi&lt;10].rssi&quot;,,0]</key>
                                     </item>
                                 </graph_item>
                                 <graph_item>
-                                    <sortorder>2</sortorder>
+                                    <sortorder>0</sortorder>
                                     <drawtype>0</drawtype>
                                     <color>00BB00</color>
                                     <yaxisside>0</yaxisside>
@@ -3542,7 +3813,7 @@ Data rate is decreased upon failure and frame is sent again. Three sequential fa
                                     <type>0</type>
                                     <item>
                                         <host>Template UBNT UniFi Controller</host>
-                                        <key>unifi.proxy[pcount,user,{#SITENAME},&quot;[ap_mac={#MAC}].[rssi&lt;10].rssi&quot;,,0]</key>
+                                        <key>unifi.proxy[pcount,user,{#SITENAME},&quot;[ap_mac={#MAC}].[rssi&lt;30].rssi&quot;,,0]</key>
                                     </item>
                                 </graph_item>
                             </graph_items>
