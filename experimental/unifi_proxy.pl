@@ -45,17 +45,25 @@ use constant {
      CONTROLLER_VERSION_5 => 'v5',
 
      # *** Managed objects ***
+     # Don't use object alluser with LLD - JSON may be broken due result size > 65535b (Max Zabbix LLD line size)
+     OBJ_ALLUSER => 'alluser',
+     OBJ_DPI => 'dpi',
      OBJ_EXTENSION => 'extension',
+     OBJ_FIREWALLGROUP => 'firewallgroup',
+     OBJ_FIREWALLRULE => 'firewallrule',
      OBJ_HEALTH => 'health',
-     OBJ_NUMBER => 'number',
-     OBJ_SYSINFO => 'sysinfo',
-     OBJ_SETTING => 'setting',
+     OBJ_HOTSPOT2 => 'hotspot2',
      OBJ_NETWORK => 'network',
+     OBJ_NUMBER => 'number',
+     OBJ_ROUTING => 'routing',
+     OBJ_SETTING => 'setting',
      OBJ_SITE => 'site',
+     OBJ_SITEDPI => 'sitedpi',
+     OBJ_SYSINFO => 'sysinfo',
      OBJ_UAP => 'uap',
      OBJ_UAP_VAP_TABLE => 'uap_vap_table',
      OBJ_UPH => 'uph',
-     OBJ_USG => 'usg',
+     OBJ_UGW => 'ugw',
      OBJ_USER => 'user',
      OBJ_USERGROUP => 'usergroup',
      OBJ_USW => 'usw',
@@ -63,8 +71,6 @@ use constant {
      OBJ_VOUCHER => 'voucher',
      OBJ_WLAN => 'wlan',
      OBJ_WLANGROUP => 'wlangroup',
-     # Don't use object alluser with LLD - JSON may be broken due result size > 65535b (Max Zabbix buffer)
-     OBJ_ALLUSER => 'alluser',
 
      # *** Debug levels ***
      DEBUG_LOW => 1,
@@ -1017,9 +1023,12 @@ sub addToLLD {
 #        ;
       } elsif (OBJ_VOUCHER eq $givenObjType) {
          $_[3][$o]->{'{#QUOTA}'}     = $_->{'quota'};
-         $_[3][$o]->{'{#USED}'}      = $_->{'used'};
+         $_[3][$o]->{'{#USED}'}      = $_->{'used'} if (exists($_->{'used'}));
          $_[3][$o]->{'{#DURATION}'}  = $_->{'duration'};
+      } elsif (OBJ_HOTSPOT2 eq $givenObjType) {
+         $_[3][$o]->{'{#HESSID}'}     = $_->{'hessid'};
       }
+
       if (OBJ_ALLUSER eq $givenObjType) {
           delete $_[3][$o]->{'{#SITEID}'},
           delete $_[3][$o]->{'{#SITENAME}'},
@@ -1063,7 +1072,7 @@ sub readConf {
         'objecttype'               => [TYPE_STRING, OBJ_WLAN],
         'sitename'                 => [TYPE_STRING, 'default'],
         'unifilocation'            => [TYPE_STRING, 'https://127.0.0.1:8443'],
-        'unifiversion'             => [TYPE_STRING, CONTROLLER_VERSION_4],
+        'unifiversion'             => [TYPE_STRING, CONTROLLER_VERSION_5],
         'unifiuser'                => [TYPE_STRING, 'stat'],
         'unifipass'                => [TYPE_STRING, 'stat'],
         'unifitimeout'             => [TYPE_NUMBER, 60],
@@ -1095,63 +1104,100 @@ sub readConf {
 
    # Sitename which replaced {'sitename'} if '-s' option not used
    $globalConfig->{'default_sitename'} = 'default';
-   $globalConfig->{'api_path'}         = "$globalConfig->{'unifilocation'}/api";
-   $globalConfig->{'login_path'}       = "$globalConfig->{'unifilocation'}/login";
-   $globalConfig->{'logout_path'}      = "$globalConfig->{'unifilocation'}/logout";
-   $globalConfig->{'login_data'}       = "username=$globalConfig->{'unifiuser'}&password=$globalConfig->{'unifipass'}&login=login";
-   $globalConfig->{'content_type'}       = 'application/x-www-form-urlencoded';
 
-    # Set controller version specific data
-    if (CONTROLLER_VERSION_4 eq $globalConfig->{'unifiversion'}) {
-       $globalConfig->{'login_path'}   = "$globalConfig->{'unifilocation'}/api/login";
-       $globalConfig->{'login_data'}   = "{\"username\":\"$globalConfig->{'unifiuser'}\",\"password\":\"$globalConfig->{'unifipass'}\"}",
-       $globalConfig->{'content_type'}  = 'application/json;charset=UTF-8',
-       # Data fetch rules.
-       # BY_GET mean that data fetched by HTTP GET from .../api/[s/<site>/]{'path'} operation.
-       #    [s/<site>/] must be excluded from path if {'excl_sitename'} is defined
-       # BY_CMD say that data fetched by HTTP POST {'cmd'} to .../api/[s/<site>/]{'path'}
-       #
-       $globalConfig->{'fetch_rules'}  = {
-          OBJ_SITE       , {'method' => BY_GET, 'path' => 'self/sites', 'excl_sitename' => TRUE},
-          OBJ_UAP        , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
-          OBJ_UPH        , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
-          OBJ_USG        , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
-          OBJ_USW        , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
-          OBJ_SYSINFO    , {'method' => BY_GET, 'path' => 'stat/sysinfo'},
-          OBJ_USER       , {'method' => BY_GET, 'path' => 'stat/sta'},
-          OBJ_ALLUSER    , {'method' => BY_GET, 'path' => 'stat/alluser'},
-          OBJ_HEALTH     , {'method' => BY_GET, 'path' => 'stat/health'},
-          OBJ_VOUCHER    , {'method' => BY_GET, 'path' => 'stat/voucher'},
-          OBJ_NETWORK    , {'method' => BY_GET, 'path' => 'list/networkconf'},
-          OBJ_EXTENSION  , {'method' => BY_GET, 'path' => 'list/extension'},
-          OBJ_NUMBER     , {'method' => BY_GET, 'path' => 'list/number'},
-          OBJ_USERGROUP  , {'method' => BY_GET, 'path' => 'list/usergroup'},
-          OBJ_WLAN       , {'method' => BY_GET, 'path' => 'list/wlanconf'},
-          OBJ_WLANGROUP  , {'method' => BY_GET, 'path' => 'list/wlangroup'},
-          OBJ_SETTING    , {'method' => BY_GET, 'path' => 'get/setting'},
-          OBJ_USW_PORT_TABLE , {'parent' => OBJ_USW},
-          OBJ_UAP_VAP_TABLE  , {'parent' => OBJ_UAP}
+   $globalConfig->{'api_path'}       = "$globalConfig->{'unifilocation'}/api";
+   $globalConfig->{'logout_path'}    = "$globalConfig->{'unifilocation'}/logout";
+
+   # Define controller's login methods
+   if (CONTROLLER_VERSION_5 eq $globalConfig->{'unifiversion'} || CONTROLLER_VERSION_4 eq $globalConfig->{'unifiversion'}) {
+      $globalConfig->{'login_path'}  = "$globalConfig->{'unifilocation'}/api/login",
+      $globalConfig->{'login_data'}  = "{\"username\":\"$globalConfig->{'unifiuser'}\",\"password\":\"$globalConfig->{'unifipass'}\"}",
+      $globalConfig->{'content_type'}  = 'application/json;charset=UTF-8';
+   } elsif (CONTROLLER_VERSION_3 eq $globalConfig->{'unifiversion'} || CONTROLLER_VERSION_2 eq $globalConfig->{'unifiversion'}) {
+      $globalConfig->{'login_path'}     = "$globalConfig->{'unifilocation'}/login";
+      $globalConfig->{'login_data'}     = "username=$globalConfig->{'unifiuser'}&password=$globalConfig->{'unifipass'}&login=login";
+      $globalConfig->{'content_type'}   = 'application/x-www-form-urlencoded';
+   } else {
+      die "[!] Version of controller is unknown: '$globalConfig->{'unifiversion'}', stop\n";
+   }
+
+# Define controller's data fetch rules
+# BY_GET mean that data fetched by HTTP GET from .../api/[s/<site>/]{'path'} operation.
+#    [s/<site>/] must be excluded from path if {'excl_sitename'} is defined
+# BY_CMD say that data fetched by HTTP POST {'cmd'} to .../api/[s/<site>/]{'path'}
+#
+if (CONTROLLER_VERSION_5 eq $globalConfig->{'unifiversion'}) {
+   # 'stat/dpi' (OBJ_DPI) on v.5.0 ... v5.5 is the same that 'stat/sitedpi' (OBJ_SITEDPI) in v5.6 and above - API links just renamed
+   # both of objects leaved in code to save compability with all releases of Controller v5
+   $globalConfig->{'fetch_rules'} = {
+      OBJ_SITE            , {'method' => BY_GET, 'path' => 'self/sites', 'excl_sitename' => TRUE},
+      OBJ_UAP             , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
+      OBJ_UPH             , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
+      OBJ_UGW             , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
+      OBJ_USW             , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
+      OBJ_ALLUSER         , {'method' => BY_GET, 'path' => 'stat/alluser'},
+      OBJ_DPI             , {'method' => BY_GET, 'path' => 'stat/dpi'},
+      OBJ_HEALTH          , {'method' => BY_GET, 'path' => 'stat/health'},
+      OBJ_SITEDPI         , {'method' => BY_GET, 'path' => 'stat/sitedpi'},
+      OBJ_SYSINFO         , {'method' => BY_GET, 'path' => 'stat/sysinfo'},
+      OBJ_USER            , {'method' => BY_GET, 'path' => 'stat/sta'},
+      OBJ_VOUCHER         , {'method' => BY_GET, 'path' => 'stat/voucher'},
+      OBJ_EXTENSION       , {'method' => BY_GET, 'path' => 'rest/extension'},
+      OBJ_FIREWALLGROUP   , {'method' => BY_GET, 'path' => 'rest/firewallgroup'},
+      OBJ_FIREWALLRULE    , {'method' => BY_GET, 'path' => 'rest/firewallrule'},
+      OBJ_HOTSPOT2        , {'method' => BY_GET, 'path' => 'rest/hotspot2conf'},
+      OBJ_NETWORK         , {'method' => BY_GET, 'path' => 'rest/networkconf'},
+      OBJ_NUMBER          , {'method' => BY_GET, 'path' => 'rest/number'},
+      OBJ_ROUTING         , {'method' => BY_GET, 'path' => 'rest/routing'},
+      OBJ_SETTING         , {'method' => BY_GET, 'path' => 'get/setting'},
+      OBJ_USERGROUP       , {'method' => BY_GET, 'path' => 'rest/usergroup'},
+      OBJ_WLAN            , {'method' => BY_GET, 'path' => 'rest/wlanconf'},
+      OBJ_WLANGROUP       , {'method' => BY_GET, 'path' => 'rest/wlangroup'},
+      OBJ_USW_PORT_TABLE  , {'parent' => OBJ_USW},
+      OBJ_UAP_VAP_TABLE   , {'parent' => OBJ_UAP}
+   };
+} elsif (CONTROLLER_VERSION_4 eq $globalConfig->{'unifiversion'}) {
+   $globalConfig->{'fetch_rules'} = {
+      OBJ_SITE            , {'method' => BY_GET, 'path' => 'self/sites', 'excl_sitename' => TRUE},
+      OBJ_UAP             , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
+      OBJ_UPH             , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
+      OBJ_UGW             , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
+      OBJ_USW             , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
+      OBJ_ALLUSER         , {'method' => BY_GET, 'path' => 'stat/alluser'},
+      OBJ_HEALTH          , {'method' => BY_GET, 'path' => 'stat/health'},
+      OBJ_SYSINFO         , {'method' => BY_GET, 'path' => 'stat/sysinfo'},
+      OBJ_USER            , {'method' => BY_GET, 'path' => 'stat/sta'},
+      OBJ_VOUCHER         , {'method' => BY_GET, 'path' => 'stat/voucher'},
+      OBJ_EXTENSION       , {'method' => BY_GET, 'path' => 'list/extension'},
+      OBJ_NETWORK         , {'method' => BY_GET, 'path' => 'list/networkconf'},
+      OBJ_NUMBER          , {'method' => BY_GET, 'path' => 'list/number'},
+      OBJ_SETTING         , {'method' => BY_GET, 'path' => 'get/setting'},
+      OBJ_USERGROUP       , {'method' => BY_GET, 'path' => 'list/usergroup'},
+      OBJ_WLAN            , {'method' => BY_GET, 'path' => 'list/wlanconf'},
+      OBJ_WLANGROUP       , {'method' => BY_GET, 'path' => 'list/wlangroup'},
+      OBJ_USW_PORT_TABLE  , {'parent' => OBJ_USW},
+      OBJ_UAP_VAP_TABLE   , {'parent' => OBJ_UAP}
+   };
+} elsif (CONTROLLER_VERSION_3 eq $globalConfig->{'unifiversion'}) {
+   $globalConfig->{'fetch_rules'} = {
+      OBJ_SITE            , {'method' => BY_CMD, 'path' => 'cmd/sitemgr', 'cmd' => '{"cmd":"get-sites"}'},
+      OBJ_UAP             , {'method' => BY_GET, 'path' => 'stat/device'},
+      OBJ_SYSINFO         , {'method' => BY_GET, 'path' => 'stat/sysinfo'},
+      OBJ_USER            , {'method' => BY_GET, 'path' => 'stat/sta'},
+      OBJ_ALLUSER         , {'method' => BY_GET, 'path' => 'stat/alluser'},
+      OBJ_USERGROUP       , {'method' => BY_GET, 'path' => 'list/usergroup'},
+      OBJ_WLAN            , {'method' => BY_GET, 'path' => 'list/wlanconf'},
+      OBJ_WLANGROUP       , {'method' => BY_GET, 'path' => 'list/wlangroup'},
+      OBJ_SETTING         , {'method' => BY_GET, 'path' => 'get/setting'}
+   };
+} elsif (CONTROLLER_VERSION_2 eq $globalConfig->{'unifiversion'}) {
+   $globalConfig->{'fetch_rules'} = {
+      OBJ_UAP             , {'method' => BY_GET, 'path' => 'stat/device', 'excl_sitename' => TRUE},
+      OBJ_WLAN            , {'method' => BY_GET, 'path' => 'list/wlanconf', 'excl_sitename' => TRUE},
+      OBJ_USER            , {'method' => BY_GET, 'path' => 'stat/sta', 'excl_sitename' => TRUE}
        };
-    } elsif (CONTROLLER_VERSION_3 eq $globalConfig->{'unifiversion'}) {
-       $globalConfig->{'fetch_rules'}  = {
-          OBJ_SITE       , {'method' => BY_CMD, 'path' => 'cmd/sitemgr', 'cmd' => '{"cmd":"get-sites"}'},
-          OBJ_UAP        , {'method' => BY_GET, 'path' => 'stat/device'},
-          OBJ_SYSINFO    , {'method' => BY_GET, 'path' => 'stat/sysinfo'},
-          OBJ_USER       , {'method' => BY_GET, 'path' => 'stat/sta'},
-          OBJ_ALLUSER    , {'method' => BY_GET, 'path' => 'stat/alluser'},
-          OBJ_USERGROUP  , {'method' => BY_GET, 'path' => 'list/usergroup'},
-          OBJ_WLAN       , {'method' => BY_GET, 'path' => 'list/wlanconf'},
-          OBJ_WLANGROUP  , {'method' => BY_GET, 'path' => 'list/wlangroup'}
-       };
-    } elsif (CONTROLLER_VERSION_2 eq $globalConfig->{'unifiversion'}) {
-       $globalConfig->{'fetch_rules'}  = {
-          OBJ_UAP       , {'method' => BY_GET, 'path' => 'stat/device', 'excl_sitename' => TRUE},
-          OBJ_WLAN      , {'method' => BY_GET, 'path' => 'list/wlanconf', 'excl_sitename' => TRUE},
-          OBJ_USER      , {'method' => BY_GET, 'path' => 'stat/sta', 'excl_sitename' => TRUE}
-       };
-    } else {
-       die "[!] Version of controller is unknown: '$globalConfig->{'unifiversion'}, stop\n";
-    }
+}
+
    logMessage(DEBUG_MID, "[.] globalConfig:\n", $globalConfig);
    logMessage(DEBUG_MID, "[.] JSON backend: " . JSON::backend());
 
