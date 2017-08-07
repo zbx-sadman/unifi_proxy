@@ -1,5 +1,17 @@
 ## UniFi Proxy change log 
 
+
+### v1.3.5
+Fixed:
+- Metrics obtaining from UniFi Security Gateway;
+
+Changes:
+- TLS moved to 1.2 to works with UniFi Controller v5.5 / v5.6 and above;
+
+Added:
+- UniFi Controller v5 releases real support; 
+- New objects: _voucher_ , _dpi_ / _sitedpi_.
+
 ### v1.3.4
 Enhancements:
  - Use JSON module to allow flexibility in which JSON backend is used. Refer to [https://metacpan.org/pod/JSON#CHOOSING-BACKEND](https://metacpan.org/pod/JSON#CHOOSING-BACKEND) for more information;
