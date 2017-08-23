@@ -1,7 +1,7 @@
 ## UniFi Proxy
 Actual release is v1.3.5.
 
-See [change log](https://github.com/zbx-sadman/unifi_proxy/blob/master/ChangeLog.md) before update.
+Read [change log](https://github.com/zbx-sadman/unifi_proxy/blob/master/ChangeLog.md) before update to new release.
 
 Installable package is not exist, DYI-ers must explore _/etc_ , _/usr/local_ and _/src_ dirs and get that what they need:
 
@@ -19,7 +19,7 @@ It is a TCP server written in Perl, which helps deliver to the monitoring system
 
 ![Zabbix: connected clients](http://community.ubnt.com/t5/image/serverpage/image-id/53219iB1CA79D24EFB2BEB/image-size/original)
 
-If you have a question about Proxy, please, refer to [UniFi Proxy Russian Guide] (https://github.com/zbx-sadman/unifi_proxy/wiki/UniFi-Proxy-Guide-in-Russian) or [UniFi Proxy English Guide] (https://github.com/zbx-sadman/unifi_proxy/wiki/UniFi-Proxy-Guide-in-English).
+If you have a question about Proxy, please, refer to [UniFi Proxy Russian Guide](https://github.com/zbx-sadman/unifi_proxy/wiki/UniFi-Proxy-Guide-in-Russian) or [UniFi Proxy English Guide](https://github.com/zbx-sadman/unifi_proxy/wiki/UniFi-Proxy-Guide-in-English).
 
 Also, answers to many questions and troubleshooting issues may be found in  
 [UniFi Miner Russian Guide](https://github.com/zbx-sadman/unifi_miner/wiki/UniFi-Miner-Guide-in-Russian) or [UniFi Miner English Guide](https://github.com/zbx-sadman/unifi_miner/wiki/UniFi-Miner-Guide-in-English).
