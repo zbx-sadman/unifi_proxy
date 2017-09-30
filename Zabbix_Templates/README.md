@@ -21,6 +21,6 @@ If you **choose template with "Zabbix agent (active)" data items**, please, make
 
 **Note#1**: "Active checks" templates contain Discovery Rules that have passive 'Zabbix agent' type. It is a small feature trick to detect some configuration errors: if the Data Items were created from its prototypes, but data not coming in them - that means the user incorrectly configured the Zabbix agent's active mode. In the event that the Data Items were not created - it incorrectly configured the UniFi Proxy/MIner (LLD JSON was not returned to Zabbix Server). You can change Discovery Rules type to 'Zabbix agent (active)' if all issues solved or was not arrived.
 
-**Note#2**: Not all metrics used in templates are available in all UniFi Controller releases. Some of them have been removed in newer releases, others have existed only in beta branches.
+**Note#2**: Not all metrics used in templates are available in all UniFi Controller releases. Some of them have been removed in newer releases, others have existed only in beta branches. Also, for example, UAP-Pro device have more metrics than UAP.
 
 **Note#3**: You must use `UnsafeUserParameters=1` option of Zabbix Agentd to avoid following error: _"Special characters "\, ', ", `, *, ?, [, ], {, }, ~, $, !, &, ;, (, ), <, >, |, #, @, 0x0a" are not allowed in the parameters"_. 
