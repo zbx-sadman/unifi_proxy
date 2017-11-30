@@ -19,8 +19,8 @@
 
 #include "sysinc.h"
 #include "module.h"
-#include "comms.h"
 #include "common.h"
+#include "comms.h"
 #include "zbxmedia.h"
 #include "log.h"
 #include "cfg.h"
