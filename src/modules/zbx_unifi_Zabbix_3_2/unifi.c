@@ -25,6 +25,10 @@
 #include "log.h"
 #include "cfg.h"
 
+
+
+static char	ZCONFIG_SOURCE_IP[] 		  =  "0.0.0.0";
+
 static char	ZBX_MODULE_NAME[] 		  =  "unifi.so";
 static char	DEFAULT_UNIFI_PROXY_SERVER[]      =  "localhost";
 static char	DEFAULT_UNIFI_PROXY_CONFIG_FILE[] =  "unifi.conf";
@@ -32,7 +36,7 @@ static int	DEFAULT_UNIFI_PROXY_PORT	  =  8448;
 
 extern char 	*CONFIG_LOAD_MODULE_PATH;
 
-char 		*UNIFI_PROXY_SERVER;
+char* 		UNIFI_PROXY_SERVER;
 int 		UNIFI_PROXY_PORT;
 
     
@@ -104,64 +108,98 @@ static int	unifi_alive(AGENT_REQUEST *request, AGENT_RESULT *result)
     return SYSINFO_RET_OK;
 }
 
-static int	unifi_proxy(AGENT_REQUEST *request, AGENT_RESULT *result)
+static int unifi_proxy(AGENT_REQUEST *request, AGENT_RESULT *result)
 {
-        int             ret;
-        int 		i, p, np;
-        // Since Zabbix3 zbx_sock_t => zbx_socket_t
-        zbx_socket_t	s;
-        char		send_buf[MAX_STRING_LEN];
-        const char		*recv_buf;
-        
-        *send_buf='\0';
 
-        np = request->nparam;
+    struct sockaddr_in server_addr;
+    struct hostent *server;
+    char buffer[MAX_BUFFER_LEN];
+    int i, p, np, sockfd, n, nbytes;
+
+    np = request->nparam;
     if (9 < request->nparam)
     {
-	/* set optional error message */
-	SET_MSG_RESULT(result, strdup("So much parameters given."));
-	return SYSINFO_RET_FAIL;
+        SET_MSG_RESULT(result, strdup("Error: so much parameters specified"));
+        return SYSINFO_RET_FAIL;
     }
-        // make request string by concatenate all params
-        for (i=0; i < np; i++) 
-          {
-            strcat(send_buf, get_rparam(request, i));
-            p=strlen(send_buf);
-            send_buf[p]=(i < (np-1)) ? ',' : '\n';
-            send_buf[p+1]='\0';
-          }
 
-        // Connect to UniFi Proxy
-        // item_timeout or (item_timeout-1) ?
+    // Create query string string from params
+    if ( 0 >= request->nparam ) 
+    {
+       buffer[0]='\n';
+       buffer[1]='\0';
+    } else {
+      buffer[0]='\0';
+      for (i=0; i < np; i++) 
+      {
+          strcat(buffer, get_rparam(request, i));
+          p = strlen(buffer);
+          buffer[p]=(i < (np-1)) ? ',' : '\n';
+          buffer[p+1]='\0';
+      }
+    }
+    // Create socket
+    sockfd = socket(AF_INET, SOCK_STREAM , 0);
+    if (-1 == sockfd)
+    {
+        zabbix_log(LOG_LEVEL_DEBUG, "%s: could not create socket", ZBX_MODULE_NAME);
+        SET_MSG_RESULT(result, strdup("Error: could not create socket"));
+        return SYSINFO_RET_FAIL;
+    }
 
-        // Since Zabbix3 zbx_tcp_connect: 
-        //     configured_tls_connect_mode = ZBX_TCP_SEC_UNENCRYPTED
-        //     tls_arg1 = NULL
-        //     tls_arg2 = NULL
-        if (SUCCEED == (ret = zbx_tcp_connect(&s, CONFIG_SOURCE_IP, UNIFI_PROXY_SERVER, UNIFI_PROXY_PORT, CONFIG_TIMEOUT, ZBX_TCP_SEC_UNENCRYPTED, NULL, NULL)))
-        {
-            // Send request
-            if (SUCCEED == (ret = zbx_tcp_send_raw(&s, send_buf)))
-               {
-                  // Recive answer from UniFi Proxy
-                  if (NULL != (recv_buf = zbx_tcp_recv_line(&s))) {
-//                        zbx_rtrim(recv_buf, "\r\n");
-                        SET_STR_RESULT(result, strdup(recv_buf));
-                     }
-                 else { ret = FAIL; }
-               }
-            zbx_tcp_close(&s);
-        }
+    // Resolve hostname
+    server = gethostbyname(UNIFI_PROXY_SERVER);
 
-        if (FAIL == ret)
-           {
-			
-        // Since Zabbix3 zbx_tcp_strerror() => zbx_socket_strerror()
-	zabbix_log(LOG_LEVEL_DEBUG, "%s: communication error: %s", ZBX_MODULE_NAME, zbx_socket_strerror());
-	SET_MSG_RESULT(result, strdup(zbx_socket_strerror()));
-                return SYSINFO_RET_FAIL;
-           }
+    if (NULL == server)
+    {
+       zabbix_log(LOG_LEVEL_DEBUG, "%s: no such host '%s'", ZBX_MODULE_NAME, UNIFI_PROXY_SERVER);
+       SET_MSG_RESULT(result, strdup("Error: no such host"));
+       return SYSINFO_RET_FAIL;
+    }
 
+    // Prepare connection
+    memset(&server_addr, 0x00, sizeof(server_addr));
+    memcpy(&server_addr.sin_addr.s_addr, server->h_addr, server->h_length);
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(UNIFI_PROXY_PORT);
+
+    nbytes = strlen(buffer);
+
+    // Connect to remote server
+    if (connect(sockfd, (struct sockaddr*) &server_addr , sizeof(server_addr)) < 0)
+    {
+       zabbix_log(LOG_LEVEL_DEBUG, "%s: connect to '%s' failed", ZBX_MODULE_NAME, UNIFI_PROXY_SERVER);
+       SET_MSG_RESULT(result, strdup("Error: connect failed"));
+       puts(UNIFI_PROXY_SERVER);
+       return SYSINFO_RET_FAIL;
+    }
+
+    // Send query to the server
+    n = write(sockfd, buffer, nbytes);
+
+    if (n != nbytes)
+    {
+       zabbix_log(LOG_LEVEL_DEBUG, "%s: send failed", ZBX_MODULE_NAME);
+       SET_MSG_RESULT(result, strdup("Error: send failed"));
+       return SYSINFO_RET_FAIL;
+    }
+
+        // Receive reply from the server
+    n = read(sockfd, buffer, sizeof(buffer));
+    if (0 > n)
+    {
+       zabbix_log(LOG_LEVEL_DEBUG, "%s: recieve failed", ZBX_MODULE_NAME);
+       SET_MSG_RESULT(result, strdup("Error: recieve failed"));
+       return SYSINFO_RET_FAIL;
+    }
+
+    // Finalize connection
+    close(sockfd);
+
+    buffer[n]='\0';
+    zbx_rtrim(buffer, "\r\n");
+
+    SET_STR_RESULT(result, strdup(buffer));
     return SYSINFO_RET_OK;
 }
 
@@ -177,10 +215,10 @@ static int	unifi_proxy(AGENT_REQUEST *request, AGENT_RESULT *result)
 static void	unifi_set_defaults()
 {
     if (NULL == UNIFI_PROXY_SERVER)
-	    UNIFI_PROXY_SERVER = zbx_strdup(UNIFI_PROXY_SERVER, DEFAULT_UNIFI_PROXY_SERVER);
+       UNIFI_PROXY_SERVER = (char*) &DEFAULT_UNIFI_PROXY_SERVER;
 
     if (0 == UNIFI_PROXY_PORT)
-	    UNIFI_PROXY_PORT = DEFAULT_UNIFI_PROXY_PORT;
+       UNIFI_PROXY_PORT = DEFAULT_UNIFI_PROXY_PORT;
 }
 	    
 	    
@@ -206,10 +244,10 @@ static void	unifi_load_config()
 	    {"UniFiProxyServer",	&UNIFI_PROXY_SERVER,	TYPE_STRING,	PARM_OPT,	0,	0},
 	    {"UniFiProxyPort",		&UNIFI_PROXY_PORT,	TYPE_UINT64,	PARM_OPT,	0,	0},
         };
-    	        
+
     zbx_snprintf(conf_file, MAX_STRING_LEN, "%s/%s", CONFIG_LOAD_MODULE_PATH, DEFAULT_UNIFI_PROXY_CONFIG_FILE);
     zabbix_log(LOG_LEVEL_DEBUG, "%s: load & parse config stage. Config file is %s", ZBX_MODULE_NAME, conf_file);
-        parse_cfg_file(conf_file, cfg, ZBX_CFG_FILE_OPTIONAL, ZBX_CFG_STRICT);
+    parse_cfg_file(conf_file, cfg, ZBX_CFG_FILE_OPTIONAL, ZBX_CFG_STRICT);
 }        					
     			
 /******************************************************************************
