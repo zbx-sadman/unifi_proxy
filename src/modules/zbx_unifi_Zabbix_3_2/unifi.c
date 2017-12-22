@@ -170,7 +170,6 @@ static int unifi_proxy(AGENT_REQUEST *request, AGENT_RESULT *result)
     {
        zabbix_log(LOG_LEVEL_DEBUG, "%s: connect to '%s' failed", ZBX_MODULE_NAME, UNIFI_PROXY_SERVER);
        SET_MSG_RESULT(result, strdup("Error: connect failed"));
-       puts(UNIFI_PROXY_SERVER);
        return SYSINFO_RET_FAIL;
     }
 
