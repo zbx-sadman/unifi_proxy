@@ -1,4 +1,23 @@
 ## UniFi Proxy 1.3.0
+
+    22.12.2017
+ - New feature added: regexp for filters. Regexp pattern can be used for filtering values of JSON keys. Refer to Perl Regexp tutorial for details. Use simple pattern, please. Example: 
+
+```
+# Count connected users on UAPs, which MAC's contained '16:5c' or '73:13' substrings.
+    ./unifi_proxy_get 127.0.0.1 8448 "count,uap,default,[mac=~16:5c|mac=~73:13].num_sta,,,0"
+```
+
+    21.12.2017
+[Proxy 1.3.6](https://github.com/zbx-sadman/unifi_proxy/blob/master/experimental/unifi_proxy.pl) is testing:
+
+ - New action added: _raw_ (can be renamed later). New key _*_ added too. This pair must helps to get RAW JSON of UniFi object (or its nested object) for using with Zabbix v3.4 JSON preprocessing.
+   Example:
+```
+    ./unifi_proxy_get 127.0.0.1 8448 "raw,site,default,*,,,0"
+{"attr_no_delete":true,"_id":"5523f87e99320d293df816fd","desc":"Default","name":"default","attr_hidden_id":"default","role":"readonly"}
+```
+
     
     13/02/2016
     
