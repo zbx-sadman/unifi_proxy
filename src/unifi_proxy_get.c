@@ -2,63 +2,94 @@
 #include<string.h>    //strlen
 #include<sys/socket.h>    //socket
 #include<arpa/inet.h> //inet_addr
+#include <netdb.h>
 
-#define MAX_BUFFER_LEN 65536
-#define MAX_STRING_LEN 255 
+#define MAX_BUFFER_LEN    65536
+#define MAX_STRING_LEN    255 
+#define SYSINFO_RET_FAIL  1
+#define SYSINFO_RET_OK    0
 
 int main(int argc , char *argv[])
 {
-    int sock, npos, success;
-    struct sockaddr_in server;
-    char message[MAX_STRING_LEN] , server_reply[MAX_BUFFER_LEN], buff;
-     
-    if (4 != argc)
+    struct sockaddr_in server_addr;
+    struct hostent *server;
+    char buffer[MAX_BUFFER_LEN];
+    int p, np, sockfd;
+    unsigned int i, n, nbytes;
+
+    if (4 > argc)
       {
-        printf("[!] To few arguments. Use: %s <IP> <port> <request>\n", argv[0]);
+        printf("Error: to few parameters specified.\nTry this: % <IP> <port> <request>\n\n", argv[0]);
         return 1;
       }
 
-    //Create socket
-    sock = socket(AF_INET , SOCK_STREAM , 0);
-    if (sock == -1)
+    // Create socket
+    sockfd = socket(AF_INET, SOCK_STREAM , 0);
+    if (-1 == sockfd)
     {
-        puts("Could not create socket");
+        puts("Error: could not create socket");
+        return SYSINFO_RET_FAIL;
     }
 
+    // Resolve hostname
     // 1-st arg - addr to connect 
-    server.sin_addr.s_addr = inet_addr(argv[1]);
-    server.sin_family = AF_INET;
+    server = gethostbyname(argv[1]);
+
+    if (NULL == server)
+    {
+       printf("Error: no such host '%s'", argv[1]);
+       return SYSINFO_RET_FAIL;
+    }
+
+    // Prepare connection
+    memset(&server_addr, 0x00, sizeof(server_addr));
+    memcpy(&server_addr.sin_addr.s_addr, server->h_addr, server->h_length);
+    server_addr.sin_family = AF_INET;
     // 2-nd arg - port to connect 
-    server.sin_port = htons(atoi(argv[2]));
- 
-    //Connect to remote server
-    if (connect(sock , (struct sockaddr *)&server , sizeof(server)) < 0)
+    server_addr.sin_port = htons(atoi(argv[2]));
+
+
+    // Connect to remote server
+    if (connect(sockfd, (struct sockaddr*) &server_addr , sizeof(server_addr)) < 0)
     {
-        puts("connect failed. Error");
-        return 1;
+       printf("Error: connect to '%s' failed'", argv[1]);
+       return SYSINFO_RET_FAIL;
     }
 
-    // 3-rd arg - request line
-    sprintf(message, "%s\n",argv[3]);
-    //Send some data
-    if( send(sock , message , strlen(message) , 0) < 0)
-    {
-        puts("Send failed");
-        return 1;
-    }
-         
-    //Receive a reply from the server
-    npos=0;
-    while (npos <= MAX_BUFFER_LEN)
-    {
-      success = recv(sock, (char*) &buff, 1, 0);
-      if ((buff == '\n') || (! success) ) { break; }
-      server_reply[npos] = buff;
-      npos++;
-    }
-    server_reply[npos]='\0';
-    puts(server_reply);
+    // Send query to the server
+    nbytes = snprintf(buffer, sizeof(buffer), "%s\n", argv[3]);
 
-    close(sock);
-    return 0;
+    n = write(sockfd, buffer, nbytes);
+
+    if (n != nbytes)
+    {
+       printf("Error: sending to '%s' failed'", argv[1]);
+       return SYSINFO_RET_FAIL;
+    }
+
+    // Receive reply from the server
+    n = read(sockfd, buffer, sizeof(buffer));
+
+    if (0 > n)
+    {
+       printf("Error: recieving from '%s' failed'", argv[1]);
+       return SYSINFO_RET_FAIL;
+    }
+
+    // Finalize connection
+    close(sockfd);
+
+    buffer[n] = '\0';
+/*
+    for (i = 0; n < i; i++) {
+        if ('\n' == buffer[n] || '\r' == buffer[n]) {
+           buffer[i] = '\0';
+           break;
+        }
+    }
+
+*/ 
+    printf("%s", buffer);
+
+    return SYSINFO_RET_OK;
 }
