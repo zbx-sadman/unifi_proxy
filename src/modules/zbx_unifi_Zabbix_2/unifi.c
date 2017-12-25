@@ -87,7 +87,8 @@ int	zbx_module_unifi_proxy(AGENT_REQUEST *request, AGENT_RESULT *result)
     struct sockaddr_in server_addr;
     struct hostent *server;
     char buffer[MAX_BUFFER_LEN];
-    int i, p, np, sockfd, n, nbytes;
+    int i, p, np, sockfd;
+    unsigned int n, nbytes;
 
     np = request->nparam;
     if (9 < request->nparam)
