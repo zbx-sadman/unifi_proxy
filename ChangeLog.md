@@ -1,5 +1,12 @@
 ## UniFi Proxy change log 
 
+### v1.3.6
+Fixed:
+- Uncorrect socket closing on exit;
+- Script execution error when object without id-key reached (probably it unadopted devices);
+
+Added:
+- RegExp feature for the filter expression; 
 
 ### v1.3.5
 Fixed:
