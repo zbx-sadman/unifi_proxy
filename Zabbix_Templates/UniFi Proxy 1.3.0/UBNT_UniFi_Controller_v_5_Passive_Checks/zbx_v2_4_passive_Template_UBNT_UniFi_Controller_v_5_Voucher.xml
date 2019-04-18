@@ -9,8 +9,8 @@
     </groups>
     <templates>
         <template>
-            <template>Template UBNT Voucher - UniFi Controller v5 - passive checks</template>
-            <name>Template UBNT Voucher - UniFi Controller v5 - passive checks</name>
+            <template>Template UBNT Voucher - UniFi Controller v5 - active checks</template>
+            <name>Template UBNT Voucher - UniFi Controller v5 - active checks</name>
             <description>Template for UBNT Voucher by zbx.sadman@gmail.com&#13;
 &#13;
 Tested with controller v5.x, Zabbix v 2.4.&#13;

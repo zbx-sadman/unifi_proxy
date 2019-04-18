@@ -1,11 +1,11 @@
 Since UniFi Proxy / Miner v1.3.5 released, single template was splitted to following:
-- Main template, Site & DPI related metrics - zbx\_v2\_4\_active\_Template\_UBNT\_**UniFi_Controller\_v\_5**\_for\_UniFi\_Proxy.xml;
-- UniFi Access Points (UAP) template - ...**UBNT\_UniFi\_UAP**...;
-- UniFi Security Gateway (UGW / USG) template - ...**UBNT\_UniFi\_UGW**...;
-- UniFi Connected users & guests template - ...**UBNT\_UniFi\_User**...;
-- UniFi Switch (USW) template - ...**UBNT\_UniFi\_USW**...;
-- UniFi VoIP Phone & extension template - ...**UBNT\_UniFi\_VoIP**...;
-- UniFi Hotspot Voucher template - ...**UBNT\_UniFi\_Voucher**...;
+- Main template, Site & DPI related metrics - zbx\_v2\_4\_active\_Template\_UBNT\_**UniFi_Controller\_v\_5**.xml;
+- UniFi Access Points (UAP) template - ...UniFi_Controller\_v\_5\_**UAP**...;
+- UniFi Security Gateway (UGW / USG) template - ...UniFi_Controller\_v\_5\_**UGW**...;
+- UniFi Connected users & guests template - ...UniFi_Controller\_v\_5\_**User**...;
+- UniFi Switch (USW) template - ...UniFi_Controller\_v\_5\__**USW**...;
+- UniFi VoIP Phone & extension template - ...UniFi_Controller\_v\_5\_**VoIP**...;
+- UniFi Hotspot Voucher template - ...UniFi_Controller\_v\_5\_**Voucher**...;
 
 How to make a choice between "Active checks" and "Passive checks" templates set:
 - Zabbix agent with UniFi Controller is placed behind NAT => active checks;

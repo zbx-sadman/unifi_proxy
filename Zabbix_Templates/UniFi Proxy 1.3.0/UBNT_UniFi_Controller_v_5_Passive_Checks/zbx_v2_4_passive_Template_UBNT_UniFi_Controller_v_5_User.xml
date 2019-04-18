@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <zabbix_export>
     <version>2.0</version>
-    <date>2017-08-03T14:07:52Z</date>
+    <date>2017-08-03T14:11:11Z</date>
     <groups>
         <group>
             <name>Templates</name>
@@ -9,9 +9,9 @@
     </groups>
     <templates>
         <template>
-            <template>Template UBNT VoIP - UniFi Controller v5 - passive checks</template>
-            <name>Template UBNT VoIP - UniFi Controller v5 - passive checks</name>
-            <description>Template for UBNT UniFI VoIP by zbx.sadman@gmail.com&#13;
+            <template>Template UBNT User - UniFi Controller v5 - active checks</template>
+            <name>Template UBNT User - UniFi Controller v5 - active checks</name>
+            <description>Template for UBNT UniFI User by zbx.sadman@gmail.com&#13;
 &#13;
 Tested with controller v5.x, Zabbix v 2.4.&#13;
 &#13;
@@ -29,22 +29,22 @@ aptitude bring a-lot-of-beer</description>
             </groups>
             <applications>
                 <application>
-                    <name>UniFi Phones</name>
+                    <name>UniFi User group</name>
                 </application>
                 <application>
-                    <name>UniFi VOIP</name>
+                    <name>UniFi Users</name>
                 </application>
             </applications>
             <items/>
             <discovery_rules>
                 <discovery_rule>
-                    <name>UniFi Phones discovery</name>
+                    <name>UniFi User discovery</name>
                     <type>0</type>
                     <snmp_community/>
                     <snmp_oid/>
-                    <key>unifi.proxy[discovery,uph]</key>
-                    <delay>600</delay>
-                    <status>0</status>
+                    <key>unifi.proxy[discovery,user]</key>
+                    <delay>60</delay>
+                    <status>1</status>
                     <allowed_hosts/>
                     <snmpv3_contextname/>
                     <snmpv3_securityname/>
@@ -68,18 +68,233 @@ aptitude bring a-lot-of-beer</description>
                         <conditions/>
                     </filter>
                     <lifetime>0</lifetime>
-                    <description>Discover UniFi Phones</description>
+                    <description/>
                     <item_prototypes>
                         <item_prototype>
-                            <name>[{#SITEDESC}] UPH &quot;{#NAME}&quot; '$4' state</name>
+                            <name>[{#SITEDESC}] Devices '{#OUI}' number</name>
                             <type>0</type>
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[get,uph,{#SITENAME},adopted,{#ID}]</key>
-                            <delay>120</delay>
-                            <history>7</history>
-                            <trends>90</trends>
+                            <key>unifi.proxy[count,user,default,&quot;[oui={#OUI}].oui&quot;]</key>
+                            <delay>60</delay>
+                            <history>1</history>
+                            <trends>7</trends>
+                            <status>0</status>
+                            <value_type>3</value_type>
+                            <allowed_hosts/>
+                            <units/>
+                            <delta>0</delta>
+                            <snmpv3_contextname/>
+                            <snmpv3_securityname/>
+                            <snmpv3_securitylevel>0</snmpv3_securitylevel>
+                            <snmpv3_authprotocol>0</snmpv3_authprotocol>
+                            <snmpv3_authpassphrase/>
+                            <snmpv3_privprotocol>0</snmpv3_privprotocol>
+                            <snmpv3_privpassphrase/>
+                            <formula>1</formula>
+                            <delay_flex/>
+                            <params/>
+                            <ipmi_sensor/>
+                            <data_type>0</data_type>
+                            <authtype>0</authtype>
+                            <username/>
+                            <password/>
+                            <publickey/>
+                            <privatekey/>
+                            <port/>
+                            <description/>
+                            <inventory_link>0</inventory_link>
+                            <applications>
+                                <application>
+                                    <name>UniFi Users</name>
+                                </application>
+                            </applications>
+                            <valuemap/>
+                            <logtimefmt/>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>[{#SITEDESC}] Devices '{#OUI}' number (%)</name>
+                            <type>0</type>
+                            <snmp_community/>
+                            <multiplier>0</multiplier>
+                            <snmp_oid/>
+                            <key>unifi.proxy[pcount,user,{#SITENAME},&quot;[oui={#OUI}].oui&quot;]</key>
+                            <delay>60</delay>
+                            <history>1</history>
+                            <trends>7</trends>
+                            <status>0</status>
+                            <value_type>0</value_type>
+                            <allowed_hosts/>
+                            <units>%</units>
+                            <delta>0</delta>
+                            <snmpv3_contextname/>
+                            <snmpv3_securityname/>
+                            <snmpv3_securitylevel>0</snmpv3_securitylevel>
+                            <snmpv3_authprotocol>0</snmpv3_authprotocol>
+                            <snmpv3_authpassphrase/>
+                            <snmpv3_privprotocol>0</snmpv3_privprotocol>
+                            <snmpv3_privpassphrase/>
+                            <formula>1</formula>
+                            <delay_flex/>
+                            <params/>
+                            <ipmi_sensor/>
+                            <data_type>0</data_type>
+                            <authtype>0</authtype>
+                            <username/>
+                            <password/>
+                            <publickey/>
+                            <privatekey/>
+                            <port/>
+                            <description/>
+                            <inventory_link>0</inventory_link>
+                            <applications>
+                                <application>
+                                    <name>UniFi Users</name>
+                                </application>
+                            </applications>
+                            <valuemap/>
+                            <logtimefmt/>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>[{#SITEDESC}] User &quot;{#NAME}&quot; ICMP ping ({#MAC})</name>
+                            <type>0</type>
+                            <snmp_community/>
+                            <multiplier>0</multiplier>
+                            <snmp_oid/>
+                            <key>icmpping[{#IP},1]</key>
+                            <delay>60</delay>
+                            <history>1</history>
+                            <trends>7</trends>
+                            <status>0</status>
+                            <value_type>3</value_type>
+                            <allowed_hosts/>
+                            <units/>
+                            <delta>0</delta>
+                            <snmpv3_contextname/>
+                            <snmpv3_securityname/>
+                            <snmpv3_securitylevel>0</snmpv3_securitylevel>
+                            <snmpv3_authprotocol>0</snmpv3_authprotocol>
+                            <snmpv3_authpassphrase/>
+                            <snmpv3_privprotocol>0</snmpv3_privprotocol>
+                            <snmpv3_privpassphrase/>
+                            <formula>1</formula>
+                            <delay_flex/>
+                            <params/>
+                            <ipmi_sensor/>
+                            <data_type>0</data_type>
+                            <authtype>0</authtype>
+                            <username/>
+                            <password/>
+                            <publickey/>
+                            <privatekey/>
+                            <port/>
+                            <description/>
+                            <inventory_link>0</inventory_link>
+                            <applications>
+                                <application>
+                                    <name>UniFi Users</name>
+                                </application>
+                            </applications>
+                            <valuemap/>
+                            <logtimefmt/>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>[{#SITEDESC}] User {#NAME} CCQ ({#MAC})</name>
+                            <type>0</type>
+                            <snmp_community/>
+                            <multiplier>1</multiplier>
+                            <snmp_oid/>
+                            <key>unifi.proxy[get,user,{#SITENAME},ccq,{#ID}]</key>
+                            <delay>60</delay>
+                            <history>1</history>
+                            <trends>7</trends>
+                            <status>0</status>
+                            <value_type>0</value_type>
+                            <allowed_hosts/>
+                            <units>%</units>
+                            <delta>0</delta>
+                            <snmpv3_contextname/>
+                            <snmpv3_securityname/>
+                            <snmpv3_securitylevel>0</snmpv3_securitylevel>
+                            <snmpv3_authprotocol>0</snmpv3_authprotocol>
+                            <snmpv3_authpassphrase/>
+                            <snmpv3_privprotocol>0</snmpv3_privprotocol>
+                            <snmpv3_privpassphrase/>
+                            <formula>.1</formula>
+                            <delay_flex/>
+                            <params/>
+                            <ipmi_sensor/>
+                            <data_type>0</data_type>
+                            <authtype>0</authtype>
+                            <username/>
+                            <password/>
+                            <publickey/>
+                            <privatekey/>
+                            <port/>
+                            <description/>
+                            <inventory_link>0</inventory_link>
+                            <applications>
+                                <application>
+                                    <name>UniFi Users</name>
+                                </application>
+                            </applications>
+                            <valuemap/>
+                            <logtimefmt/>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>[{#SITEDESC}] User {#NAME} noise level ({#MAC})</name>
+                            <type>0</type>
+                            <snmp_community/>
+                            <multiplier>0</multiplier>
+                            <snmp_oid/>
+                            <key>unifi.proxy[get,user,{#SITENAME},noise,{#ID}]</key>
+                            <delay>60</delay>
+                            <history>1</history>
+                            <trends>7</trends>
+                            <status>0</status>
+                            <value_type>0</value_type>
+                            <allowed_hosts/>
+                            <units/>
+                            <delta>0</delta>
+                            <snmpv3_contextname/>
+                            <snmpv3_securityname/>
+                            <snmpv3_securitylevel>0</snmpv3_securitylevel>
+                            <snmpv3_authprotocol>0</snmpv3_authprotocol>
+                            <snmpv3_authpassphrase/>
+                            <snmpv3_privprotocol>0</snmpv3_privprotocol>
+                            <snmpv3_privpassphrase/>
+                            <formula>1</formula>
+                            <delay_flex/>
+                            <params/>
+                            <ipmi_sensor/>
+                            <data_type>0</data_type>
+                            <authtype>0</authtype>
+                            <username/>
+                            <password/>
+                            <publickey/>
+                            <privatekey/>
+                            <port/>
+                            <description/>
+                            <inventory_link>0</inventory_link>
+                            <applications>
+                                <application>
+                                    <name>UniFi Users</name>
+                                </application>
+                            </applications>
+                            <valuemap/>
+                            <logtimefmt/>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>[{#SITEDESC}] User {#NAME} powersave enabled ({#MAC})</name>
+                            <type>0</type>
+                            <snmp_community/>
+                            <multiplier>0</multiplier>
+                            <snmp_oid/>
+                            <key>unifi.proxy[get,user,{#SITENAME},powersave_enabled,{#ID}]</key>
+                            <delay>60</delay>
+                            <history>1</history>
+                            <trends>7</trends>
                             <status>0</status>
                             <value_type>3</value_type>
                             <allowed_hosts/>
@@ -107,241 +322,26 @@ aptitude bring a-lot-of-beer</description>
                             <inventory_link>0</inventory_link>
                             <applications>
                                 <application>
-                                    <name>UniFi Phones</name>
+                                    <name>UniFi Users</name>
                                 </application>
                             </applications>
                             <valuemap/>
                             <logtimefmt/>
                         </item_prototype>
                         <item_prototype>
-                            <name>[{#SITEDESC}] UPH &quot;{#NAME}&quot; firmware version</name>
+                            <name>[{#SITEDESC}] User {#NAME} RSSI ({#MAC})</name>
                             <type>0</type>
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[get,uph,{#SITENAME},version,{#ID}]</key>
-                            <delay>3600</delay>
-                            <history>30</history>
-                            <trends>365</trends>
-                            <status>0</status>
-                            <value_type>4</value_type>
-                            <allowed_hosts/>
-                            <units/>
-                            <delta>0</delta>
-                            <snmpv3_contextname/>
-                            <snmpv3_securityname/>
-                            <snmpv3_securitylevel>0</snmpv3_securitylevel>
-                            <snmpv3_authprotocol>0</snmpv3_authprotocol>
-                            <snmpv3_authpassphrase/>
-                            <snmpv3_privprotocol>0</snmpv3_privprotocol>
-                            <snmpv3_privpassphrase/>
-                            <formula>1</formula>
-                            <delay_flex/>
-                            <params/>
-                            <ipmi_sensor/>
-                            <data_type>0</data_type>
-                            <authtype>0</authtype>
-                            <username/>
-                            <password/>
-                            <publickey/>
-                            <privatekey/>
-                            <port/>
-                            <description/>
-                            <inventory_link>0</inventory_link>
-                            <applications>
-                                <application>
-                                    <name>UniFi Phones</name>
-                                </application>
-                            </applications>
-                            <valuemap/>
-                            <logtimefmt/>
-                        </item_prototype>
-                        <item_prototype>
-                            <name>[{#SITEDESC}] UPH &quot;{#NAME}&quot; is active</name>
-                            <type>0</type>
-                            <snmp_community/>
-                            <multiplier>0</multiplier>
-                            <snmp_oid/>
-                            <key>unifi.proxy[get,uph,{#SITENAME},state,{#ID}]</key>
-                            <delay>60</delay>
-                            <history>7</history>
-                            <trends>90</trends>
-                            <status>0</status>
-                            <value_type>3</value_type>
-                            <allowed_hosts/>
-                            <units/>
-                            <delta>0</delta>
-                            <snmpv3_contextname/>
-                            <snmpv3_securityname/>
-                            <snmpv3_securitylevel>0</snmpv3_securitylevel>
-                            <snmpv3_authprotocol>0</snmpv3_authprotocol>
-                            <snmpv3_authpassphrase/>
-                            <snmpv3_privprotocol>0</snmpv3_privprotocol>
-                            <snmpv3_privpassphrase/>
-                            <formula>1</formula>
-                            <delay_flex/>
-                            <params/>
-                            <ipmi_sensor/>
-                            <data_type>3</data_type>
-                            <authtype>0</authtype>
-                            <username/>
-                            <password/>
-                            <publickey/>
-                            <privatekey/>
-                            <port/>
-                            <description/>
-                            <inventory_link>0</inventory_link>
-                            <applications>
-                                <application>
-                                    <name>UniFi Phones</name>
-                                </application>
-                            </applications>
-                            <valuemap/>
-                            <logtimefmt/>
-                        </item_prototype>
-                        <item_prototype>
-                            <name>[{#SITEDESC}] UPH &quot;{#NAME}&quot; model</name>
-                            <type>0</type>
-                            <snmp_community/>
-                            <multiplier>0</multiplier>
-                            <snmp_oid/>
-                            <key>unifi.proxy[get,uph,{#SITENAME},model,{#ID}]</key>
-                            <delay>3600</delay>
-                            <history>1</history>
-                            <trends>365</trends>
-                            <status>0</status>
-                            <value_type>4</value_type>
-                            <allowed_hosts/>
-                            <units/>
-                            <delta>0</delta>
-                            <snmpv3_contextname/>
-                            <snmpv3_securityname/>
-                            <snmpv3_securitylevel>0</snmpv3_securitylevel>
-                            <snmpv3_authprotocol>0</snmpv3_authprotocol>
-                            <snmpv3_authpassphrase/>
-                            <snmpv3_privprotocol>0</snmpv3_privprotocol>
-                            <snmpv3_privpassphrase/>
-                            <formula>1</formula>
-                            <delay_flex/>
-                            <params/>
-                            <ipmi_sensor/>
-                            <data_type>0</data_type>
-                            <authtype>0</authtype>
-                            <username/>
-                            <password/>
-                            <publickey/>
-                            <privatekey/>
-                            <port/>
-                            <description/>
-                            <inventory_link>0</inventory_link>
-                            <applications>
-                                <application>
-                                    <name>UniFi Phones</name>
-                                </application>
-                            </applications>
-                            <valuemap/>
-                            <logtimefmt/>
-                        </item_prototype>
-                        <item_prototype>
-                            <name>[{#SITEDESC}] UPH &quot;{#NAME}&quot; platform version</name>
-                            <type>0</type>
-                            <snmp_community/>
-                            <multiplier>0</multiplier>
-                            <snmp_oid/>
-                            <key>unifi.proxy[get,uph,{#SITENAME},platform_version,{#ID}]</key>
-                            <delay>3600</delay>
-                            <history>1</history>
-                            <trends>365</trends>
-                            <status>0</status>
-                            <value_type>4</value_type>
-                            <allowed_hosts/>
-                            <units/>
-                            <delta>0</delta>
-                            <snmpv3_contextname/>
-                            <snmpv3_securityname/>
-                            <snmpv3_securitylevel>0</snmpv3_securitylevel>
-                            <snmpv3_authprotocol>0</snmpv3_authprotocol>
-                            <snmpv3_authpassphrase/>
-                            <snmpv3_privprotocol>0</snmpv3_privprotocol>
-                            <snmpv3_privpassphrase/>
-                            <formula>1</formula>
-                            <delay_flex/>
-                            <params/>
-                            <ipmi_sensor/>
-                            <data_type>0</data_type>
-                            <authtype>0</authtype>
-                            <username/>
-                            <password/>
-                            <publickey/>
-                            <privatekey/>
-                            <port/>
-                            <description/>
-                            <inventory_link>0</inventory_link>
-                            <applications>
-                                <application>
-                                    <name>UniFi Phones</name>
-                                </application>
-                            </applications>
-                            <valuemap/>
-                            <logtimefmt/>
-                        </item_prototype>
-                        <item_prototype>
-                            <name>[{#SITEDESC}] UPH &quot;{#NAME}&quot; serial number</name>
-                            <type>0</type>
-                            <snmp_community/>
-                            <multiplier>0</multiplier>
-                            <snmp_oid/>
-                            <key>unifi.proxy[get,uph,{#SITENAME},serial,{#ID}]</key>
-                            <delay>3600</delay>
-                            <history>1</history>
-                            <trends>365</trends>
-                            <status>0</status>
-                            <value_type>4</value_type>
-                            <allowed_hosts/>
-                            <units/>
-                            <delta>0</delta>
-                            <snmpv3_contextname/>
-                            <snmpv3_securityname/>
-                            <snmpv3_securitylevel>0</snmpv3_securitylevel>
-                            <snmpv3_authprotocol>0</snmpv3_authprotocol>
-                            <snmpv3_authpassphrase/>
-                            <snmpv3_privprotocol>0</snmpv3_privprotocol>
-                            <snmpv3_privpassphrase/>
-                            <formula>1</formula>
-                            <delay_flex/>
-                            <params/>
-                            <ipmi_sensor/>
-                            <data_type>0</data_type>
-                            <authtype>0</authtype>
-                            <username/>
-                            <password/>
-                            <publickey/>
-                            <privatekey/>
-                            <port/>
-                            <description/>
-                            <inventory_link>0</inventory_link>
-                            <applications>
-                                <application>
-                                    <name>UniFi Phones</name>
-                                </application>
-                            </applications>
-                            <valuemap/>
-                            <logtimefmt/>
-                        </item_prototype>
-                        <item_prototype>
-                            <name>[{#SITEDESC}] UPH &quot;{#NAME}&quot; uptime</name>
-                            <type>0</type>
-                            <snmp_community/>
-                            <multiplier>0</multiplier>
-                            <snmp_oid/>
-                            <key>unifi.proxy[get,uph,{#SITENAME},uptime,{#ID}]</key>
+                            <key>unifi.proxy[get,user,{#SITENAME},rssi,{#ID}]</key>
                             <delay>60</delay>
                             <history>1</history>
-                            <trends>90</trends>
+                            <trends>7</trends>
                             <status>0</status>
-                            <value_type>3</value_type>
+                            <value_type>0</value_type>
                             <allowed_hosts/>
-                            <units>uptime</units>
+                            <units>dBm</units>
                             <delta>0</delta>
                             <snmpv3_contextname/>
                             <snmpv3_securityname/>
@@ -365,52 +365,112 @@ aptitude bring a-lot-of-beer</description>
                             <inventory_link>0</inventory_link>
                             <applications>
                                 <application>
-                                    <name>UniFi Phones</name>
+                                    <name>UniFi Users</name>
+                                </application>
+                            </applications>
+                            <valuemap/>
+                            <logtimefmt/>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>[{#SITEDESC}] User {#NAME} signal level ({#MAC})</name>
+                            <type>0</type>
+                            <snmp_community/>
+                            <multiplier>0</multiplier>
+                            <snmp_oid/>
+                            <key>unifi.proxy[get,user,{#SITENAME},signal,{#ID}]</key>
+                            <delay>60</delay>
+                            <history>1</history>
+                            <trends>7</trends>
+                            <status>0</status>
+                            <value_type>0</value_type>
+                            <allowed_hosts/>
+                            <units>dBm</units>
+                            <delta>0</delta>
+                            <snmpv3_contextname/>
+                            <snmpv3_securityname/>
+                            <snmpv3_securitylevel>0</snmpv3_securitylevel>
+                            <snmpv3_authprotocol>0</snmpv3_authprotocol>
+                            <snmpv3_authpassphrase/>
+                            <snmpv3_privprotocol>0</snmpv3_privprotocol>
+                            <snmpv3_privpassphrase/>
+                            <formula>1</formula>
+                            <delay_flex/>
+                            <params/>
+                            <ipmi_sensor/>
+                            <data_type>0</data_type>
+                            <authtype>0</authtype>
+                            <username/>
+                            <password/>
+                            <publickey/>
+                            <privatekey/>
+                            <port/>
+                            <description/>
+                            <inventory_link>0</inventory_link>
+                            <applications>
+                                <application>
+                                    <name>UniFi Users</name>
                                 </application>
                             </applications>
                             <valuemap/>
                             <logtimefmt/>
                         </item_prototype>
                     </item_prototypes>
-                    <trigger_prototypes>
-                        <trigger_prototype>
-                            <expression>{Template UBNT VoIP - UniFi Controller v5 - passive checks:unifi.proxy[get,uph,{#SITENAME},version,{#ID}].change()}=1</expression>
-                            <name>[{#SITEDESC}] UPH &quot;{#NAME}&quot;  firmware version is changed</name>
-                            <url/>
-                            <status>0</status>
-                            <priority>2</priority>
-                            <description/>
+                    <trigger_prototypes/>
+                    <graph_prototypes>
+                        <graph_prototype>
+                            <name>[{#SITEDESC}] '{#OUI}' device statistic</name>
+                            <width>900</width>
+                            <height>200</height>
+                            <yaxismin>0.0000</yaxismin>
+                            <yaxismax>100.0000</yaxismax>
+                            <show_work_period>1</show_work_period>
+                            <show_triggers>1</show_triggers>
                             <type>0</type>
-                        </trigger_prototype>
-                        <trigger_prototype>
-                            <expression>{Template UBNT VoIP - UniFi Controller v5 - passive checks:unifi.proxy[get,uph,{#SITENAME},state,{#ID}].max(1m)}=0</expression>
-                            <name>[{#SITEDESC}] UPH &quot;{#NAME}&quot; is not active &gt; 1m</name>
-                            <url/>
-                            <status>0</status>
-                            <priority>3</priority>
-                            <description/>
-                            <type>0</type>
-                        </trigger_prototype>
-                        <trigger_prototype>
-                            <expression>{Template UBNT VoIP - UniFi Controller v5 - passive checks:unifi.proxy[get,uph,{#SITENAME},adopted,{#ID}].max(1m)}=0</expression>
-                            <name>[{#SITEDESC}] UPH &quot;{#NAME}&quot; is not adopted &gt; 1m</name>
-                            <url/>
-                            <status>0</status>
-                            <priority>2</priority>
-                            <description/>
-                            <type>0</type>
-                        </trigger_prototype>
-                    </trigger_prototypes>
-                    <graph_prototypes/>
+                            <show_legend>1</show_legend>
+                            <show_3d>0</show_3d>
+                            <percent_left>0.0000</percent_left>
+                            <percent_right>0.0000</percent_right>
+                            <ymin_type_1>0</ymin_type_1>
+                            <ymax_type_1>0</ymax_type_1>
+                            <ymin_item_1>0</ymin_item_1>
+                            <ymax_item_1>0</ymax_item_1>
+                            <graph_items>
+                                <graph_item>
+                                    <sortorder>0</sortorder>
+                                    <drawtype>0</drawtype>
+                                    <color>00BB00</color>
+                                    <yaxisside>0</yaxisside>
+                                    <calc_fnc>7</calc_fnc>
+                                    <type>0</type>
+                                    <item>
+                                        <host>Template UBNT User - UniFi Controller v5 - active checks</host>
+                                        <key>unifi.proxy[count,user,default,&quot;[oui={#OUI}].oui&quot;]</key>
+                                    </item>
+                                </graph_item>
+                                <graph_item>
+                                    <sortorder>1</sortorder>
+                                    <drawtype>0</drawtype>
+                                    <color>0000BB</color>
+                                    <yaxisside>1</yaxisside>
+                                    <calc_fnc>7</calc_fnc>
+                                    <type>0</type>
+                                    <item>
+                                        <host>Template UBNT User - UniFi Controller v5 - active checks</host>
+                                        <key>unifi.proxy[pcount,user,{#SITENAME},&quot;[oui={#OUI}].oui&quot;]</key>
+                                    </item>
+                                </graph_item>
+                            </graph_items>
+                        </graph_prototype>
+                    </graph_prototypes>
                     <host_prototypes/>
                 </discovery_rule>
                 <discovery_rule>
-                    <name>UniFi VOIP extensions</name>
+                    <name>UniFi User group discovery</name>
                     <type>0</type>
                     <snmp_community/>
                     <snmp_oid/>
-                    <key>unifi.proxy[discovery,extension]</key>
-                    <delay>600</delay>
+                    <key>unifi.proxy[discovery,usergroup]</key>
+                    <delay>3600</delay>
                     <status>0</status>
                     <allowed_hosts/>
                     <snmpv3_contextname/>
@@ -438,17 +498,17 @@ aptitude bring a-lot-of-beer</description>
                     <description/>
                     <item_prototypes>
                         <item_prototype>
-                            <name>[{#SITEDESC}] EXT {#EXTENSION} call number</name>
+                            <name>[{#SITEDESC}] User group &quot;{#NAME}&quot; download bandwidth limit</name>
                             <type>0</type>
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[get,number,{#SITENAME},&quot;[extension_id={#ID}].number&quot;]</key>
+                            <key>unifi.proxy[get,usergroup,{#SITENAME},&quot;[_id={#ID}].qos_rate_max_down&quot;]</key>
                             <delay>600</delay>
                             <history>7</history>
-                            <trends>365</trends>
+                            <trends>90</trends>
                             <status>0</status>
-                            <value_type>4</value_type>
+                            <value_type>0</value_type>
                             <allowed_hosts/>
                             <units/>
                             <delta>0</delta>
@@ -474,24 +534,24 @@ aptitude bring a-lot-of-beer</description>
                             <inventory_link>0</inventory_link>
                             <applications>
                                 <application>
-                                    <name>UniFi VOIP</name>
+                                    <name>UniFi User group</name>
                                 </application>
                             </applications>
                             <valuemap/>
                             <logtimefmt/>
                         </item_prototype>
                         <item_prototype>
-                            <name>[{#SITEDESC}] EXT {#EXTENSION} name</name>
+                            <name>[{#SITEDESC}] User group &quot;{#NAME}&quot; upload bandwidth limit</name>
                             <type>0</type>
                             <snmp_community/>
                             <multiplier>0</multiplier>
                             <snmp_oid/>
-                            <key>unifi.proxy[get,extension,{#SITENAME},name,{#ID}]</key>
+                            <key>unifi.proxy[get,usergroup,{#SITENAME},&quot;[_id={#ID}].qos_rate_max_up&quot;]</key>
                             <delay>600</delay>
                             <history>7</history>
-                            <trends>365</trends>
+                            <trends>90</trends>
                             <status>0</status>
-                            <value_type>4</value_type>
+                            <value_type>0</value_type>
                             <allowed_hosts/>
                             <units/>
                             <delta>0</delta>
@@ -517,7 +577,7 @@ aptitude bring a-lot-of-beer</description>
                             <inventory_link>0</inventory_link>
                             <applications>
                                 <application>
-                                    <name>UniFi VOIP</name>
+                                    <name>UniFi User group</name>
                                 </application>
                             </applications>
                             <valuemap/>
@@ -531,7 +591,37 @@ aptitude bring a-lot-of-beer</description>
             </discovery_rules>
             <macros/>
             <templates/>
-            <screens/>
+            <screens>
+                <screen>
+                    <name>Online user devices statistic</name>
+                    <hsize>1</hsize>
+                    <vsize>1</vsize>
+                    <screen_items>
+                        <screen_item>
+                            <resourcetype>20</resourcetype>
+                            <width>400</width>
+                            <height>100</height>
+                            <x>0</x>
+                            <y>0</y>
+                            <colspan>1</colspan>
+                            <rowspan>1</rowspan>
+                            <elements>0</elements>
+                            <valign>1</valign>
+                            <halign>0</halign>
+                            <style>0</style>
+                            <url/>
+                            <dynamic>0</dynamic>
+                            <sort_triggers>0</sort_triggers>
+                            <resource>
+                                <name>[{#SITEDESC}] '{#OUI}' device statistic</name>
+                                <host>Template UBNT User - UniFi Controller v5 - active checks</host>
+                            </resource>
+                            <max_columns>2</max_columns>
+                            <application/>
+                        </screen_item>
+                    </screen_items>
+                </screen>
+            </screens>
         </template>
     </templates>
 </zabbix_export>
