@@ -734,7 +734,7 @@ aptitude bring a-lot-of-beer</description>
                     </item_prototypes>
                     <trigger_prototypes>
                         <trigger_prototype>
-                            <expression>{-Template UBNT UniFi Controller v5 - active checks:unifi.proxy[get,health,{#SITENAME},&quot;[subsystem={#SUBSYSTEM}].status&quot;,,NOT_FOUND].str(&quot;warning&quot;)}=1</expression>
+                            <expression>{Template UBNT UniFi Controller v5 - active checks:unifi.proxy[get,health,{#SITENAME},&quot;[subsystem={#SUBSYSTEM}].status&quot;,,NOT_FOUND].str(&quot;warning&quot;)}=1</expression>
                             <name>Subsystem &quot;{#SUBSYSTEM}&quot; in warning state</name>
                             <url/>
                             <status>0</status>
@@ -5997,7 +5997,7 @@ aptitude bring a-lot-of-beer</description>
                     </item_prototypes>
                     <trigger_prototypes>
                         <trigger_prototype>
-                            <expression>{-Template UBNT UniFi Controller v5 - active checks:unifi.proxy[sum,uap,{#NAME},isolated,,0].min(1m)}&gt;0</expression>
+                            <expression>{Template UBNT UniFi Controller v5 - active checks:unifi.proxy[sum,uap,{#NAME},isolated,,0].min(1m)}&gt;0</expression>
                             <name>[{#DESC}] Isolated UAPs detected</name>
                             <url/>
                             <status>0</status>
@@ -6006,7 +6006,7 @@ aptitude bring a-lot-of-beer</description>
                             <type>0</type>
                         </trigger_prototype>
                         <trigger_prototype>
-                            <expression>{-Template UBNT UniFi Controller v5 - active checks:unifi.proxy[calc,uap,{#NAME},unadopted].last()}</expression>
+                            <expression>{Template UBNT UniFi Controller v5 - active checks:unifi.proxy[calc,uap,{#NAME},unadopted].last()}</expression>
                             <name>[{#DESC}] Unactive UAPs detected  ({ITEM.LASTVALUE})</name>
                             <url/>
                             <status>0</status>
@@ -6042,7 +6042,7 @@ aptitude bring a-lot-of-beer</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>-Template UBNT UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UniFi Controller v5 - active checks</host>
                                         <key>unifi.proxy[sum,uap,{#NAME},guest-num_sta,,0]</key>
                                     </item>
                                 </graph_item>
@@ -6054,7 +6054,7 @@ aptitude bring a-lot-of-beer</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>-Template UBNT UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UniFi Controller v5 - active checks</host>
                                         <key>unifi.proxy[min,uap,{#NAME},num_sta,,0]</key>
                                     </item>
                                 </graph_item>
@@ -6066,7 +6066,7 @@ aptitude bring a-lot-of-beer</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>-Template UBNT UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UniFi Controller v5 - active checks</host>
                                         <key>unifi.proxy[max,uap,{#NAME},num_sta,,0]</key>
                                     </item>
                                 </graph_item>
@@ -6078,7 +6078,7 @@ aptitude bring a-lot-of-beer</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>-Template UBNT UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UniFi Controller v5 - active checks</host>
                                         <key>unifi.proxy[sum,uap,{#NAME},user-num_sta,,0]</key>
                                     </item>
                                 </graph_item>
@@ -6110,7 +6110,7 @@ aptitude bring a-lot-of-beer</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>-Template UBNT UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UniFi Controller v5 - active checks</host>
                                         <key>unifi.proxy[sum,uap,{#NAME},state,,0]</key>
                                     </item>
                                 </graph_item>
@@ -6122,7 +6122,7 @@ aptitude bring a-lot-of-beer</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>-Template UBNT UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UniFi Controller v5 - active checks</host>
                                         <key>unifi.proxy[sum,uap,{#NAME},isolated,,0]</key>
                                     </item>
                                 </graph_item>
@@ -6134,7 +6134,7 @@ aptitude bring a-lot-of-beer</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>-Template UBNT UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UniFi Controller v5 - active checks</host>
                                         <key>unifi.proxy[sum,uap,{#NAME},adopted,,0]</key>
                                     </item>
                                 </graph_item>
@@ -6146,7 +6146,7 @@ aptitude bring a-lot-of-beer</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>-Template UBNT UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UniFi Controller v5 - active checks</host>
                                         <key>unifi.proxy[sum,uap,{#NAME},locating,,0]</key>
                                     </item>
                                 </graph_item>
@@ -6178,7 +6178,7 @@ aptitude bring a-lot-of-beer</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>-Template UBNT UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UniFi Controller v5 - active checks</host>
                                         <key>unifi.proxy[sum,uap,{#NAME},&quot;vap_table.rx_errors&quot;,,0]</key>
                                     </item>
                                 </graph_item>
@@ -6190,7 +6190,7 @@ aptitude bring a-lot-of-beer</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>-Template UBNT UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UniFi Controller v5 - active checks</host>
                                         <key>unifi.proxy[sum,uap,{#NAME},&quot;vap_table.tx_errors&quot;,,0]</key>
                                     </item>
                                 </graph_item>
@@ -6202,7 +6202,7 @@ aptitude bring a-lot-of-beer</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>-Template UBNT UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UniFi Controller v5 - active checks</host>
                                         <key>unifi.proxy[sum,uap,{#NAME},rx_bytes,,0]</key>
                                     </item>
                                 </graph_item>
@@ -6214,7 +6214,7 @@ aptitude bring a-lot-of-beer</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>-Template UBNT UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UniFi Controller v5 - active checks</host>
                                         <key>unifi.proxy[sum,uap,{#NAME},tx_bytes,,0]</key>
                                     </item>
                                 </graph_item>
@@ -6818,7 +6818,7 @@ aptitude bring a-lot-of-beer</description>
                     </item_prototypes>
                     <trigger_prototypes>
                         <trigger_prototype>
-                            <expression>{-Template UBNT UniFi Controller v5 - active checks:unifi.proxy[get,wlan,{#SITENAME},enabled,{#ID}].max(1m)}=0</expression>
+                            <expression>{Template UBNT UniFi Controller v5 - active checks:unifi.proxy[get,wlan,{#SITENAME},enabled,{#ID}].max(1m)}=0</expression>
                             <name>[{#SITEDESC}] WLAN &quot;{#NAME}&quot; is disabled</name>
                             <url/>
                             <status>0</status>
@@ -6827,7 +6827,7 @@ aptitude bring a-lot-of-beer</description>
                             <type>0</type>
                         </trigger_prototype>
                         <trigger_prototype>
-                            <expression>{-Template UBNT UniFi Controller v5 - active checks:unifi.proxy[get,wlan,{#SITENAME},security,{#ID}].change()}=1</expression>
+                            <expression>{Template UBNT UniFi Controller v5 - active checks:unifi.proxy[get,wlan,{#SITENAME},security,{#ID}].change()}=1</expression>
                             <name>[{#SITEDESC}] WLAN &quot;{#NAME}&quot; security mode for is changed</name>
                             <url/>
                             <status>0</status>
@@ -6836,7 +6836,7 @@ aptitude bring a-lot-of-beer</description>
                             <type>0</type>
                         </trigger_prototype>
                         <trigger_prototype>
-                            <expression>{-Template UBNT UniFi Controller v5 - active checks:unifi.proxy[get,wlan,{#SITENAME},vlan,{#ID}].change()}=1</expression>
+                            <expression>{Template UBNT UniFi Controller v5 - active checks:unifi.proxy[get,wlan,{#SITENAME},vlan,{#ID}].change()}=1</expression>
                             <name>[{#SITEDESC}] WLAN &quot;{#NAME}&quot; VLAN is changed</name>
                             <url/>
                             <status>0</status>
@@ -6845,7 +6845,7 @@ aptitude bring a-lot-of-beer</description>
                             <type>0</type>
                         </trigger_prototype>
                         <trigger_prototype>
-                            <expression>{-Template UBNT UniFi Controller v5 - active checks:unifi.proxy[get,wlan,{#SITENAME},wpa_mode,{#ID}].change()}=1</expression>
+                            <expression>{Template UBNT UniFi Controller v5 - active checks:unifi.proxy[get,wlan,{#SITENAME},wpa_mode,{#ID}].change()}=1</expression>
                             <name>[{#SITEDESC}] WLAN &quot;{#NAME}&quot; WPA mode is changed</name>
                             <url/>
                             <status>0</status>
@@ -6883,7 +6883,7 @@ aptitude bring a-lot-of-beer</description>
                             <sort_triggers>0</sort_triggers>
                             <resource>
                                 <name>[{#DESC}] Connected clients to UAPs</name>
-                                <host>-Template UBNT UniFi Controller v5 - active checks</host>
+                                <host>Template UBNT UniFi Controller v5 - active checks</host>
                             </resource>
                             <max_columns>2</max_columns>
                             <application/>
