@@ -9,8 +9,8 @@
     </groups>
     <templates>
         <template>
-            <template>Template UBNT User - UniFi Controller v5 - active checks</template>
-            <name>Template UBNT User - UniFi Controller v5 - active checks</name>
+            <template>Template UBNT User - UniFi Controller v5 - passive checks</template>
+            <name>Template UBNT User - UniFi Controller v5 - passive checks</name>
             <description>Template for UBNT UniFI User by zbx.sadman@gmail.com&#13;
 &#13;
 Tested with controller v5.x, Zabbix v 2.4.&#13;
@@ -443,7 +443,7 @@ aptitude bring a-lot-of-beer</description>
                                     <calc_fnc>7</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT User - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT User - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[count,user,default,&quot;[oui={#OUI}].oui&quot;]</key>
                                     </item>
                                 </graph_item>
@@ -455,7 +455,7 @@ aptitude bring a-lot-of-beer</description>
                                     <calc_fnc>7</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT User - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT User - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[pcount,user,{#SITENAME},&quot;[oui={#OUI}].oui&quot;]</key>
                                     </item>
                                 </graph_item>
@@ -614,7 +614,7 @@ aptitude bring a-lot-of-beer</description>
                             <sort_triggers>0</sort_triggers>
                             <resource>
                                 <name>[{#SITEDESC}] '{#OUI}' device statistic</name>
-                                <host>Template UBNT User - UniFi Controller v5 - active checks</host>
+                                <host>Template UBNT User - UniFi Controller v5 - passive checks</host>
                             </resource>
                             <max_columns>2</max_columns>
                             <application/>

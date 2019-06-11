@@ -9,8 +9,8 @@
     </groups>
     <templates>
         <template>
-            <template>Template UBNT UAP - UniFi Controller v5 - active checks</template>
-            <name>Template UBNT UAP - UniFi Controller v5 - active checks</name>
+            <template>Template UBNT UAP - UniFi Controller v5 - passive checks</template>
+            <name>Template UBNT UAP - UniFi Controller v5 - passive checks</name>
             <description>Template for UBNT UniFI Access Point by zbx.sadman@gmail.com&#13;
 &#13;
 Tested with controller v5.x, Zabbix v 2.4.&#13;
@@ -2855,7 +2855,7 @@ Key may not exists if no upgrade need</description>
                     </item_prototypes>
                     <trigger_prototypes>
                         <trigger_prototype>
-                            <expression>{Template UBNT UAP - UniFi Controller v5 - active checks:unifi.proxy[get,uap,{#SITENAME},upgradable,{#ID},0].last()}=1</expression>
+                            <expression>{Template UBNT UAP - UniFi Controller v5 - passive checks:unifi.proxy[get,uap,{#SITENAME},upgradable,{#ID},0].last()}=1</expression>
                             <name>[{#SITEDESC}] UAP &quot;{#NAME}&quot; firmware is not latest</name>
                             <url/>
                             <status>0</status>
@@ -2864,7 +2864,7 @@ Key may not exists if no upgrade need</description>
                             <type>0</type>
                         </trigger_prototype>
                         <trigger_prototype>
-                            <expression>{Template UBNT UAP - UniFi Controller v5 - active checks:unifi.proxy[get,uap,{#SITENAME},version,{#ID}].change()}=1</expression>
+                            <expression>{Template UBNT UAP - UniFi Controller v5 - passive checks:unifi.proxy[get,uap,{#SITENAME},version,{#ID}].change()}=1</expression>
                             <name>[{#SITEDESC}] UAP &quot;{#NAME}&quot; firmware version is changed</name>
                             <url/>
                             <status>0</status>
@@ -2873,7 +2873,7 @@ Key may not exists if no upgrade need</description>
                             <type>0</type>
                         </trigger_prototype>
                         <trigger_prototype>
-                            <expression>{Template UBNT UAP - UniFi Controller v5 - active checks:unifi.proxy[get,uap,{#SITENAME},state,{#ID}].max(1m)}=0</expression>
+                            <expression>{Template UBNT UAP - UniFi Controller v5 - passive checks:unifi.proxy[get,uap,{#SITENAME},state,{#ID}].max(1m)}=0</expression>
                             <name>[{#SITEDESC}] UAP &quot;{#NAME}&quot; is disconnected &gt; 1 min</name>
                             <url/>
                             <status>0</status>
@@ -2882,7 +2882,7 @@ Key may not exists if no upgrade need</description>
                             <type>0</type>
                         </trigger_prototype>
                         <trigger_prototype>
-                            <expression>{Template UBNT UAP - UniFi Controller v5 - active checks:unifi.proxy[get,uap,{#SITENAME},isolated,{#ID}].min(1m)}=1</expression>
+                            <expression>{Template UBNT UAP - UniFi Controller v5 - passive checks:unifi.proxy[get,uap,{#SITENAME},isolated,{#ID}].min(1m)}=1</expression>
                             <name>[{#SITEDESC}] UAP &quot;{#NAME}&quot; is isolated &gt; 1 min</name>
                             <url/>
                             <status>0</status>
@@ -2891,7 +2891,7 @@ Key may not exists if no upgrade need</description>
                             <type>0</type>
                         </trigger_prototype>
                         <trigger_prototype>
-                            <expression>{Template UBNT UAP - UniFi Controller v5 - active checks:unifi.proxy[get,uap,{#SITENAME},adopted,{#ID}].max(1m)}=0</expression>
+                            <expression>{Template UBNT UAP - UniFi Controller v5 - passive checks:unifi.proxy[get,uap,{#SITENAME},adopted,{#ID}].max(1m)}=0</expression>
                             <name>[{#SITEDESC}] UAP &quot;{#NAME}&quot; is not adopted &gt; 1m</name>
                             <url/>
                             <status>0</status>
@@ -2900,7 +2900,7 @@ Key may not exists if no upgrade need</description>
                             <type>0</type>
                         </trigger_prototype>
                         <trigger_prototype>
-                            <expression>{Template UBNT UAP - UniFi Controller v5 - active checks:icmpping[{#IP}].max(#3)}=0</expression>
+                            <expression>{Template UBNT UAP - UniFi Controller v5 - passive checks:icmpping[{#IP}].max(#3)}=0</expression>
                             <name>[{#SITEDESC}] UAP &quot;{#NAME}&quot; is unavailable by ICMP</name>
                             <url/>
                             <status>0</status>
@@ -2909,7 +2909,7 @@ Key may not exists if no upgrade need</description>
                             <type>0</type>
                         </trigger_prototype>
                         <trigger_prototype>
-                            <expression>{Template UBNT UAP - UniFi Controller v5 - active checks:unifi.proxy[get,uap,{#SITENAME},adopted,{#ID}].max(1m)}=0</expression>
+                            <expression>{Template UBNT UAP - UniFi Controller v5 - passive checks:unifi.proxy[get,uap,{#SITENAME},adopted,{#ID}].max(1m)}=0</expression>
                             <name>[{#SITEDESC}] USW &quot;{#NAME}&quot; is not adopted &gt; 1m</name>
                             <url/>
                             <status>0</status>
@@ -2945,7 +2945,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[min,user,{#SITENAME},&quot;[ap_mac={#MAC}]._uptime_by_uap&quot;,,0]</key>
                                     </item>
                                 </graph_item>
@@ -2957,7 +2957,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[max,user,{#SITENAME},&quot;[ap_mac={#MAC}]._uptime_by_uap&quot;,,0]</key>
                                     </item>
                                 </graph_item>
@@ -2989,7 +2989,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[max,user,{#SITENAME},&quot;[ap_mac={#MAC}].rx_rate&quot;,,0]</key>
                                     </item>
                                 </graph_item>
@@ -3001,7 +3001,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[median,user,{#SITENAME},&quot;[ap_mac={#MAC}].rx_rate&quot;,,0]</key>
                                     </item>
                                 </graph_item>
@@ -3013,7 +3013,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[median,user,{#SITENAME},&quot;[ap_mac={#MAC}].tx_rate&quot;,,0]</key>
                                     </item>
                                 </graph_item>
@@ -3025,7 +3025,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[max,user,{#SITENAME},&quot;[ap_mac={#MAC}].tx_rate&quot;,,0]</key>
                                     </item>
                                 </graph_item>
@@ -3057,7 +3057,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[median ,user,{#SITENAME},&quot;[ap_mac={#MAC}].rssi&quot;,,0]</key>
                                     </item>
                                 </graph_item>
@@ -3069,7 +3069,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[median,user,{#SITENAME},&quot;[ap_mac={#MAC}].signal&quot;,,-100]</key>
                                     </item>
                                 </graph_item>
@@ -3081,7 +3081,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[max,user,{#SITENAME},&quot;[ap_mac={#MAC}].rssi&quot;,,0]</key>
                                     </item>
                                 </graph_item>
@@ -3093,7 +3093,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[median,user,{#SITENAME},&quot;[ap_mac={#MAC}].noise&quot;,,-100]</key>
                                     </item>
                                 </graph_item>
@@ -3125,7 +3125,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[pcount,user,{#SITENAME},&quot;[ap_mac={#MAC}].[rssi&gt;25&amp;rssi&lt;=40].rssi&quot;,,0]</key>
                                     </item>
                                 </graph_item>
@@ -3137,7 +3137,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[pcount,user,{#SITENAME},&quot;[ap_mac={#MAC}].[rssi&gt;40].rssi&quot;,,0]</key>
                                     </item>
                                 </graph_item>
@@ -3149,7 +3149,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[pcount,user,{#SITENAME},&quot;[ap_mac={#MAC}].[rssi&gt;15&amp;rssi&lt;=25].rssi&quot;,,0]</key>
                                     </item>
                                 </graph_item>
@@ -3161,7 +3161,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[pcount,user,{#SITENAME},&quot;[ap_mac={#MAC}].[rssi&gt;10&amp;rssi&lt;=15].rssi&quot;,,0]</key>
                                     </item>
                                 </graph_item>
@@ -3173,7 +3173,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[pcount,user,{#SITENAME},&quot;[ap_mac={#MAC}].[rssi&lt;=10].rssi&quot;,,0]</key>
                                     </item>
                                 </graph_item>
@@ -3205,7 +3205,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[get,uap,{#SITENAME},guest-num_sta,{#ID},0]</key>
                                     </item>
                                 </graph_item>
@@ -3217,7 +3217,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[get,uap,{#SITENAME},user-num_sta,{#ID},0]</key>
                                     </item>
                                 </graph_item>
@@ -3249,7 +3249,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[pcount,user,{#SITENAME},&quot;[ap_mac={#MAC}].[rssi&lt;20].rssi&quot;,,0]</key>
                                     </item>
                                 </graph_item>
@@ -3261,7 +3261,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[pcount,user,{#SITENAME},&quot;[ap_mac={#MAC}].[rssi&lt;30].rssi&quot;,,0]</key>
                                     </item>
                                 </graph_item>
@@ -3273,7 +3273,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[pcount,user,{#SITENAME},&quot;[ap_mac={#MAC}].[rssi&lt;10].rssi&quot;,,0]</key>
                                     </item>
                                 </graph_item>
@@ -3305,7 +3305,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>icmppingloss[{#IP}]</key>
                                     </item>
                                 </graph_item>
@@ -3317,7 +3317,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>icmppingsec[{#IP}]</key>
                                     </item>
                                 </graph_item>
@@ -3349,7 +3349,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[get,uap,{#SITENAME},rx_bytes,{#ID},0]</key>
                                     </item>
                                 </graph_item>
@@ -3361,7 +3361,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[get,uap,{#SITENAME},tx_bytes,{#ID},0]</key>
                                     </item>
                                 </graph_item>
@@ -3373,7 +3373,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[sum,uap,{#SITENAME},&quot;stat.rx_errors&quot;,{#ID},0]</key>
                                     </item>
                                 </graph_item>
@@ -3385,7 +3385,7 @@ Key may not exists if no upgrade need</description>
                                     <calc_fnc>4</calc_fnc>
                                     <type>0</type>
                                     <item>
-                                        <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                        <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                                         <key>unifi.proxy[sum,uap,{#SITENAME},&quot;stat.tx_errors&quot;,{#ID},0]</key>
                                     </item>
                                 </graph_item>
@@ -4442,7 +4442,7 @@ Key may not exists if no upgrade need</description>
                             <sort_triggers>0</sort_triggers>
                             <resource>
                                 <key>unifi.proxy[median,user,{#SITENAME},&quot;[ap_mac={#MAC}].ccq&quot;,,0]</key>
-                                <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                             </resource>
                             <max_columns>2</max_columns>
                             <application/>
@@ -4471,7 +4471,7 @@ Key may not exists if no upgrade need</description>
                             <sort_triggers>0</sort_triggers>
                             <resource>
                                 <key>unifi.proxy[amean,user,{#SITENAME},&quot;[ap_mac={#MAC}].roam_count&quot;,,0]</key>
-                                <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                             </resource>
                             <max_columns>2</max_columns>
                             <application/>
@@ -4500,7 +4500,7 @@ Key may not exists if no upgrade need</description>
                             <sort_triggers>0</sort_triggers>
                             <resource>
                                 <name>[{#SITEDESC}] UAP &quot;{#NAME}&quot; client RX/TX rate statistic</name>
-                                <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                             </resource>
                             <max_columns>2</max_columns>
                             <application/>
@@ -4529,7 +4529,7 @@ Key may not exists if no upgrade need</description>
                             <sort_triggers>0</sort_triggers>
                             <resource>
                                 <name>[{#SITEDESC}] UAP &quot;{#NAME}&quot; client signal/noise level statistic</name>
-                                <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                             </resource>
                             <max_columns>2</max_columns>
                             <application/>
@@ -4558,7 +4558,7 @@ Key may not exists if no upgrade need</description>
                             <sort_triggers>0</sort_triggers>
                             <resource>
                                 <name>[{#SITEDESC}] UAP &quot;{#NAME}&quot; client signal quality statistic</name>
-                                <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                             </resource>
                             <max_columns>2</max_columns>
                             <application/>
@@ -4587,7 +4587,7 @@ Key may not exists if no upgrade need</description>
                             <sort_triggers>0</sort_triggers>
                             <resource>
                                 <name>[{#SITEDESC}] UAP &quot;{#NAME}&quot; expected loss of clients with MinRSSI</name>
-                                <host>Template UBNT UAP - UniFi Controller v5 - active checks</host>
+                                <host>Template UBNT UAP - UniFi Controller v5 - passive checks</host>
                             </resource>
                             <max_columns>2</max_columns>
                             <application/>

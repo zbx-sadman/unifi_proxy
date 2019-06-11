@@ -9,8 +9,8 @@
     </groups>
     <templates>
         <template>
-            <template>Template UBNT VoIP - UniFi Controller v5 - active checks</template>
-            <name>Template UBNT VoIP - UniFi Controller v5 - active checks</name>
+            <template>Template UBNT VoIP - UniFi Controller v5 - passive checks</template>
+            <name>Template UBNT VoIP - UniFi Controller v5 - passive checks</name>
             <description>Template for UBNT UniFI VoIP by zbx.sadman@gmail.com&#13;
 &#13;
 Tested with controller v5.x, Zabbix v 2.4.&#13;
@@ -374,7 +374,7 @@ aptitude bring a-lot-of-beer</description>
                     </item_prototypes>
                     <trigger_prototypes>
                         <trigger_prototype>
-                            <expression>{Template UBNT VoIP - UniFi Controller v5 - active checks:unifi.proxy[get,uph,{#SITENAME},version,{#ID}].change()}=1</expression>
+                            <expression>{Template UBNT VoIP - UniFi Controller v5 - passive checks:unifi.proxy[get,uph,{#SITENAME},version,{#ID}].change()}=1</expression>
                             <name>[{#SITEDESC}] UPH &quot;{#NAME}&quot;  firmware version is changed</name>
                             <url/>
                             <status>0</status>
@@ -383,7 +383,7 @@ aptitude bring a-lot-of-beer</description>
                             <type>0</type>
                         </trigger_prototype>
                         <trigger_prototype>
-                            <expression>{Template UBNT VoIP - UniFi Controller v5 - active checks:unifi.proxy[get,uph,{#SITENAME},state,{#ID}].max(1m)}=0</expression>
+                            <expression>{Template UBNT VoIP - UniFi Controller v5 - passive checks:unifi.proxy[get,uph,{#SITENAME},state,{#ID}].max(1m)}=0</expression>
                             <name>[{#SITEDESC}] UPH &quot;{#NAME}&quot; is not active &gt; 1m</name>
                             <url/>
                             <status>0</status>
@@ -392,7 +392,7 @@ aptitude bring a-lot-of-beer</description>
                             <type>0</type>
                         </trigger_prototype>
                         <trigger_prototype>
-                            <expression>{Template UBNT VoIP - UniFi Controller v5 - active checks:unifi.proxy[get,uph,{#SITENAME},adopted,{#ID}].max(1m)}=0</expression>
+                            <expression>{Template UBNT VoIP - UniFi Controller v5 - passive checks:unifi.proxy[get,uph,{#SITENAME},adopted,{#ID}].max(1m)}=0</expression>
                             <name>[{#SITEDESC}] UPH &quot;{#NAME}&quot; is not adopted &gt; 1m</name>
                             <url/>
                             <status>0</status>
