@@ -1,0 +1,11 @@
+[Unit]
+Description=UniFi Proxy TCP server
+After=network.target
+
+[Service]
+ExecStart=/usr/local/sbin/unifi_proxy.pl -C /etc/unifi_proxy/unifi_proxy.conf
+ExecReload=/bin/pkill -HUP unifi_proxy.pl
+Type=simple
+
+[Install]
+WantedBy=multi-user.target

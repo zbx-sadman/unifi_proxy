@@ -9,8 +9,8 @@
     </groups>
     <templates>
         <template>
-            <template>Template UBNT UGW - UniFi Controller v5 - active checks</template>
-            <name>Template UBNT UGW - UniFi Controller v5 - active checks</name>
+            <template>Template UBNT UGW - UniFi Controller v5 - passive checks</template>
+            <name>Template UBNT UGW - UniFi Controller v5 - passive checks</name>
             <description>Template for UBNT UniFI Gateway by zbx.sadman@gmail.com&#13;
 &#13;
 Tested with controller v5.x, Zabbix v 2.4.&#13;
