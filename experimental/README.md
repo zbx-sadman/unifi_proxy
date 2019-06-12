@@ -1,6 +1,11 @@
 ## UniFi Proxy 1.3.0
 
-    22.12.2017
+### 22.12.2019
+Proxy 1.3.8
+
+ - New feature added: JSON's _pretty_ and _inline_ stringify methods for results of _discovery_ or _raw_ actions output. Use it with _JsonOutput_ directive in the _unifi\_proxy.conf_.
+
+### 22.12.2017
  - New feature added: regexp for filters. Regexp pattern can be used for filtering values of JSON keys. Refer to Perl Regexp tutorial for details. Use simple pattern, please. Example: 
 
 ```
@@ -8,7 +13,7 @@
     ./unifi_proxy_get 127.0.0.1 8448 "count,uap,default,[mac=~16:5c|mac=~73:13].num_sta,,,0"
 ```
 
-    21.12.2017
+### 21.12.2017
 [Proxy 1.3.6](https://github.com/zbx-sadman/unifi_proxy/blob/master/experimental/unifi_proxy.pl) is testing:
 
  - New action added: _raw_ (can be renamed later). New key _*_ added too. This pair must helps to get RAW JSON of UniFi object (or its nested object) for using with Zabbix v3.4 JSON preprocessing.
@@ -19,7 +24,7 @@
 ```
 
     
-    13/02/2016
+### 13/02/2016
     
 Изменен порядок следования параметров в ключе unifi.proxy: поля _maxcacheage_ и _nullchar_ поменяны местами. Это должно сократить количество "лишних" запятых и уменьшить количество ошибок в процессе использования, так как статистически поле _maxcacheage_ заполняется крайне редкою   
 
@@ -70,7 +75,7 @@
 
 
 ## UniFi Proxy 1.1.0
-    18/01/2016
+### 18/01/2016
     
 Основная функция getMetric() полностью переписана. Теперь вместо рекурсивного вызова при обходе JSON дерева используется стековая модель.
 
