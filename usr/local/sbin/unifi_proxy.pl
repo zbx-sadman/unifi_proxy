@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #  
-#  UniFi Proxy 1.3.7
+#  UniFi Proxy 1.3.8
 #
 #  (C) Grigory Prigodin 2015-2019
 #  Contact e-mail: zbx.sadman@gmail.com
@@ -21,10 +21,9 @@ use Data::Dumper ();
 
 use constant {
      CONFIG_FILE_DEFAULT => '/etc/unifi_proxy/unifi_proxy.conf',
-#     CONFIG_FILE_DEFAULT => './unifi_proxy.conf',
      TOOL_HOMEPAGE => 'https://github.com/zbx-sadman/unifi_proxy',
      TOOL_NAME => 'UniFi Proxy',
-     TOOL_VERSION => '1.3.7',
+     TOOL_VERSION => '1.3.8',
 
      # *** Actions ***
      ACT_MEDIAN => 'median',
@@ -44,6 +43,10 @@ use constant {
      CONTROLLER_VERSION_3 => 'v3',
      CONTROLLER_VERSION_4 => 'v4',
      CONTROLLER_VERSION_5 => 'v5',
+
+     # *** JSON stringify method ***
+     JSON_INLINE => 'inline',
+     JSON_PRETTY => 'pretty',
 
      # *** Managed objects ***
      # Don't use object alluser with LLD - JSON may be broken due result size > 65535b (Max Zabbix LLD line size)
@@ -454,10 +457,10 @@ sub handleConnection {
           logMessage(DEBUG_MID, "[.] Make LLD JSON");
           # make JSON
           delete $selectingResult->{'total'};
-          $buffer = $gC->{'json_engine'}->encode($selectingResult);
+          $buffer = $gC->{'json_engine'}->pretty(JSON_PRETTY eq $gC->{'jsonoutput'})->encode($selectingResult);
        } elsif (ACT_RAW eq $gC->{'action'}) {
           logMessage(DEBUG_MID, "[.] Make selected object JSON");
-          $buffer = $gC->{'json_engine'}->encode($selectingResult->{'data'}[0]) if ($selectingResult->{'data'}[0]);
+          $buffer = $gC->{'json_engine'}->pretty(JSON_PRETTY eq $gC->{'jsonoutput'})->encode($selectingResult->{'data'}[0]) if ($selectingResult->{'data'}[0]);
        } else {
           # User want no discovery action
           my $totalKeysProcesseed = @{$selectingResult->{'data'}};
@@ -510,9 +513,9 @@ sub handleConnection {
        # Value could be null-type (undef in Perl). If need to replace null to other char - {'nullchar'} must be defined. On default $gC->{'nullchar'} is ''
        $buffer = $gC->{'nullchar'} unless defined($buffer);
        $buferLength = length($buffer);
-       # MAX_BUFFER_LEN - Zabbix buffer length. Sending more bytes have no sense.
-       if (MAX_BUFFER_LEN <= $buferLength) {
-          $buferLength = MAX_BUFFER_LEN-1, 
+       # MAX_BUFFER_LEN - Zabbix incoming line length. Sending more bytes have no sense.
+       if ((JSON_INLINE eq $gC->{'jsonoutput'}) and (MAX_BUFFER_LEN <= $buferLength)) {
+          $buferLength = MAX_BUFFER_LEN - 1, 
           $buffer = substr($buffer, 0, $buferLength);
        }
        # Push buffer to socket with \n and buffer lenght + 1
@@ -828,7 +831,7 @@ sub fetchData {
             # ...fetch new data from controller...
             fetchDataFromController($_[0], $_[2], $objPath, $jsonData, $useShortWay) or logMessage(DEBUG_LOW, "[!] Can't fetch data from controller"), close ($fh), return FALSE;
             # unbuffered write it to temp file..
-            syswrite ($fh, $_[0]->{'json_engine'}->encode($jsonData));
+            syswrite ($fh, $_[0]->{'json_engine'}->pretty(FALSE)->encode($jsonData));
             # Now unlink old cache filedata from cache filename 
             # All processes, who already read data - do not stop and successfully completed reading
             unlink ($cacheFileName);
@@ -1101,6 +1104,7 @@ sub readConf {
         'cachedir'                 => [TYPE_STRING, '/dev/shm'],
         'cachemaxage'              => [TYPE_NUMBER, 60],
         'debuglevel'               => [TYPE_NUMBER, FALSE],
+        'jsonoutput'               => [TYPE_STRING, JSON_PRETTY],
 
         'listenip'                 => [TYPE_STRING, 'localhost'],
         'listenport'               => [TYPE_NUMBER, 8448],
