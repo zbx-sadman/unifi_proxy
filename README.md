@@ -17,7 +17,7 @@ Command-line version of UniFi Proxy is [UniFi Miner](https://github.com/zbx-sadm
 
 It is a TCP server written in Perl, which helps deliver to the monitoring system (Zabbix or other, that used shell's utility to taken data - like Cacti) operational data - metrics and settings obtained from the UniFi controller via API, provided by Ubiquiti. Zabbix's Low-level Discovery (LLD) protocol are supported.
 
-![Zabbix: connected clients](http://community.ubnt.com/t5/image/serverpage/image-id/53219iB1CA79D24EFB2BEB/image-size/original)
+![Zabbix: connected clients](https://img.community.ui.com/e77102fc-033a-4e4f-8823-9cb6f47a26b3/comments/73f2abb7-e482-4483-a234-d36a021d5511/b8a81c88-61cf-4518-928a-b889e2efbd53)
 
 If you have a question about Proxy, please, refer to [UniFi Proxy Russian Guide](https://github.com/zbx-sadman/unifi_proxy/wiki/UniFi-Proxy-Guide-in-Russian) or [UniFi Proxy English Guide](https://github.com/zbx-sadman/unifi_proxy/wiki/UniFi-Proxy-Guide-in-English).
 
