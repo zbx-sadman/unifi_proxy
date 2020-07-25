@@ -1,6 +1,9 @@
 ## UniFi Proxy (Docker)
 The docker version. 
 
+### Note
+Docker part does not tested by @zbx-sadman, please send all questions to the [@rfranky](https://github.com/rfranky)
+
 ### Build
 From project root:
 ```
