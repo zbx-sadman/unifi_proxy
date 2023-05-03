@@ -1,8 +1,8 @@
 #!/usr/bin/perl
 #  
-#  UniFi Proxy 1.3.8
+#  UniFi Proxy 1.4.0
 #
-#  (C) Grigory Prigodin 2015-2019
+#  (C) Grigory Prigodin 2015-2023
 #  Contact e-mail: zbx.sadman@gmail.com
 #
 ### echo 1 > /proc/sys/net/ipv4/tcp_tw_recycle 
@@ -23,7 +23,7 @@ use constant {
      CONFIG_FILE_DEFAULT => '/etc/unifi_proxy/unifi_proxy.conf',
      TOOL_HOMEPAGE => 'https://github.com/zbx-sadman/unifi_proxy',
      TOOL_NAME => 'UniFi Proxy',
-     TOOL_VERSION => '1.3.8',
+     TOOL_VERSION => '1.4.0',
 
      # *** Actions ***
      ACT_MEDIAN => 'median',
@@ -43,6 +43,8 @@ use constant {
      CONTROLLER_VERSION_3 => 'v3',
      CONTROLLER_VERSION_4 => 'v4',
      CONTROLLER_VERSION_5 => 'v5',
+     CONTROLLER_VERSION_6 => 'v6',
+     CONTROLLER_VERSION_7 => 'v7',
 
      # *** JSON stringify method ***
      JSON_INLINE => 'inline',
@@ -51,6 +53,7 @@ use constant {
      # *** Managed objects ***
      # Don't use object alluser with LLD - JSON may be broken due result size > 65535b (Max Zabbix LLD line size)
      OBJ_ALLUSER => 'alluser',
+     OBJ_DEVICE => 'device',
      OBJ_DPI => 'dpi',
      OBJ_EXTENSION => 'extension',
      OBJ_FIREWALLGROUP => 'firewallgroup',
@@ -459,8 +462,8 @@ sub handleConnection {
           delete $selectingResult->{'total'};
           $buffer = $gC->{'json_engine'}->pretty(JSON_PRETTY eq $gC->{'jsonoutput'})->encode($selectingResult);
        } elsif (ACT_RAW eq $gC->{'action'}) {
-          logMessage(DEBUG_MID, "[.] Make selected object JSON");
-          $buffer = $gC->{'json_engine'}->pretty(JSON_PRETTY eq $gC->{'jsonoutput'})->encode($selectingResult->{'data'}[0]) if ($selectingResult->{'data'}[0]);
+          logMessage(DEBUG_MID, "[.] Make selected object JSON (pure)");
+          $buffer = $gC->{'json_engine'}->pretty(JSON_PRETTY eq $gC->{'jsonoutput'})->encode($selectingResult->{'data'}) if ($selectingResult->{'data'});
        } else {
           # User want no discovery action
           my $totalKeysProcesseed = @{$selectingResult->{'data'}};
@@ -713,7 +716,7 @@ sub getMetric {
 
            # JSON object selected by '*' key to return result as JSON for Zabbix 3.4.4 preprocessing feature
            if (MASK_ANY eq $keyParts[$keyPos]->{'e'} && ('HASH' eq ref($currentRoot))) {
-               push(@{$_[3]->{'data'}}, $currentRoot), goto FINISH if (ACT_RAW eq $_[0]->{'action'});
+               push(@{$_[3]->{'data'}}, $currentRoot); #, goto FINISH if (ACT_RAW eq $_[0]->{'action'});
            }
 
            # hash with name equal key part is reached from current root with one hop?
@@ -783,7 +786,7 @@ sub fetchData {
    # $_[3] - obj id
    # $_[4] - jsonData object ref
    logMessage(DEBUG_LOW, "[+] fetchData() started");
-   logMessage(DEBUG_MID, "[>]\t args: object type: '$_[2]'");
+   logMessage(DEBUG_MID, "[>]\t args: object type: ", $_[2] ? $_[2] : 'none');
    logMessage(DEBUG_MID, "[>]\t id: '$_[3]'") if ($_[3]);
    logMessage(DEBUG_MID, "[>]\t mac: '$_[0]->{'mac'}'") if ($_[0]->{'mac'});
    my $fh, my $jsonData, my $objPath, my $useShortWay = FALSE,
@@ -873,7 +876,7 @@ sub fetchData {
        $_[4][0] = @{$jsonData}[$i], last if (exists(@{$jsonData}[$i]->{$idKey}) && (@{$jsonData}[$i]->{$idKey} eq $_[3]));
      } else {
        # otherwise
-       push (@{$_[4]}, @{$jsonData}[$i]) if (!exists(@{$jsonData}[$i]->{'type'}) || (@{$jsonData}[$i]->{'type'} eq $_[2]));
+       push (@{$_[4]}, @{$jsonData}[$i]) if (!exists(@{$jsonData}[$i]->{'type'}) || (@{$jsonData}[$i]->{'type'} eq $_[2]) || $_[0]->{'fetch_rules'}->{$_[2]}->{'ignore_type'});
      }
    } # for each jsonData
 
@@ -1153,7 +1156,10 @@ sub readConf {
    $globalConfig->{'logout_path'}    = "$globalConfig->{'unifilocation'}/logout";
 
    # Define controller's login methods
-   if (CONTROLLER_VERSION_5 eq $globalConfig->{'unifiversion'} || CONTROLLER_VERSION_4 eq $globalConfig->{'unifiversion'}) {
+   if (CONTROLLER_VERSION_7 eq $globalConfig->{'unifiversion'} 
+      || CONTROLLER_VERSION_6 eq $globalConfig->{'unifiversion'} 
+      || CONTROLLER_VERSION_5 eq $globalConfig->{'unifiversion'} 
+      || CONTROLLER_VERSION_4 eq $globalConfig->{'unifiversion'}) {
       $globalConfig->{'login_path'}  = "$globalConfig->{'unifilocation'}/api/login",
       $globalConfig->{'login_data'}  = "{\"username\":\"$globalConfig->{'unifiuser'}\",\"password\":\"$globalConfig->{'unifipass'}\"}",
       $globalConfig->{'content_type'}  = 'application/json;charset=UTF-8';
@@ -1170,11 +1176,14 @@ sub readConf {
 #    [s/<site>/] must be excluded from path if {'excl_sitename'} is defined
 # BY_CMD say that data fetched by HTTP POST {'cmd'} to .../api/[s/<site>/]{'path'}
 #
-if (CONTROLLER_VERSION_5 eq $globalConfig->{'unifiversion'}) {
+   if (CONTROLLER_VERSION_7 eq $globalConfig->{'unifiversion'} 
+      || CONTROLLER_VERSION_6 eq $globalConfig->{'unifiversion'} 
+      || CONTROLLER_VERSION_5 eq $globalConfig->{'unifiversion'}) {
    # 'stat/dpi' (OBJ_DPI) on v.5.0 ... v5.5 is the same that 'stat/sitedpi' (OBJ_SITEDPI) in v5.6 and above - API links just renamed
    # both of objects leaved in code to save compability with all releases of Controller v5
    $globalConfig->{'fetch_rules'} = {
       OBJ_SITE            , {'method' => BY_GET, 'path' => 'self/sites', 'excl_sitename' => TRUE},
+      OBJ_DEVICE          , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE, 'ignore_type' => TRUE},
       OBJ_UAP             , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
       OBJ_UPH             , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
       OBJ_UGW             , {'method' => BY_GET, 'path' => 'stat/device', 'short_way' => TRUE},
